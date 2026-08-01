@@ -69,6 +69,7 @@ public final class BLEManager: NSObject, ObservableObject {
     @Published public private(set) var batteryPercent: Int?
     @Published public private(set) var stepCount: Int = 0
     @Published public private(set) var lastError: String?
+    @Published public private(set) var authenticationNotice: String?
 
     private let decoder: BLEProtocolDecoder
     private var central: CBCentralManager!
@@ -103,6 +104,8 @@ public final class BLEManager: NSObject, ObservableObject {
             self.latestRMSSD = nil
             self.batteryPercent = nil
             self.stepCount = 0
+            self.lastError = nil
+            self.authenticationNotice = nil
             self.rrWindowMs.removeAll()
             self.lastStepAt = nil
             let serviceFilter = ProtocolConstants.serviceUUIDs.isEmpty ? nil : ProtocolConstants.serviceUUIDs
@@ -134,6 +137,8 @@ public final class BLEManager: NSObject, ObservableObject {
             self.latestRMSSD = nil
             self.batteryPercent = nil
             self.stepCount = 0
+            self.lastError = nil
+            self.authenticationNotice = nil
             self.rrWindowMs.removeAll()
             self.lastStepAt = nil
             self.connectedPeripheral = peripheral
@@ -193,6 +198,10 @@ public final class BLEManager: NSObject, ObservableObject {
     private func subscribeToKnownCharacteristics(on peripheral: CBPeripheral) {
         for service in peripheral.services ?? [] {
             for characteristic in service.characteristics ?? [] where shouldSubscribe(to: characteristic) {
+                if shouldSkipEncryptedUnknownCharacteristic(characteristic) {
+                    authenticationNotice = "La banda protege \(characteristic.uuid.uuidString). iOS no permite leer esa notificación sin autenticación/pairing compatible."
+                    continue
+                }
                 peripheral.setNotifyValue(true, for: characteristic)
             }
         }
@@ -240,6 +249,14 @@ public final class BLEManager: NSObject, ObservableObject {
             return ProtocolConstants.notifyCharacteristicUUIDs.contains(characteristic.uuid)
         }
         return normalizedUUID(characteristic.uuid.uuidString) == "2A37"
+    }
+
+    private func shouldSkipEncryptedUnknownCharacteristic(_ characteristic: CBCharacteristic) -> Bool {
+        let requiresEncryption = characteristic.properties.contains(.notifyEncryptionRequired)
+            || characteristic.properties.contains(.indicateEncryptionRequired)
+        let isStandardHeartRate = normalizedUUID(characteristic.uuid.uuidString) == "2A37"
+        let isExplicitlyConfigured = ProtocolConstants.notifyCharacteristicUUIDs.contains(characteristic.uuid)
+        return requiresEncryption && !isStandardHeartRate && !isExplicitlyConfigured
     }
 
     private func hexString(_ data: Data) -> String {
@@ -369,7 +386,12 @@ extension BLEManager: CBPeripheralDelegate {
 
     public func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
         if let error {
-            lastError = "Some private characteristics require band authentication. Public HR/Battery reads still work if exposed."
+            let nsError = error as NSError
+            if nsError.domain == CBATTErrorDomain {
+                authenticationNotice = "Autenticación insuficiente en \(characteristic.uuid.uuidString). Esa característica requiere pairing/handshake privado; se mantienen HR y batería estándar si existen."
+            } else {
+                lastError = error.localizedDescription
+            }
         }
         refreshGATTSnapshot(for: peripheral)
     }
