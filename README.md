@@ -44,10 +44,11 @@ To install with AltStore or SideStore:
 
 1. Open the GitHub Actions run.
 2. Download the `MyWhoop-unsigned-ipa` artifact.
-3. Import the `.ipa` into AltStore or SideStore.
-4. Sign it with your free Apple ID through the sideloading app.
+3. Extract the downloaded artifact ZIP.
+4. Import the extracted `MyWhoop-unsigned.ipa` into AltStore or SideStore.
+5. Sign it with your free Apple ID through the sideloading app.
 
-The CI artifact is intentionally unsigned. A free Apple ID signs it during sideloading; no paid Apple Developer entitlements are required for this first version.
+GitHub Actions always wraps artifacts in a ZIP container. Do not import that outer ZIP into AltStore; import the `.ipa` file inside it. The `.ipa` is intentionally unsigned. A free Apple ID signs it during sideloading; no paid Apple Developer entitlements are required for this first version.
 
 ## Protocol Capture Workflow
 
