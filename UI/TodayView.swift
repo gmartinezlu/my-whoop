@@ -110,7 +110,7 @@ public struct TodayView: View {
                 Text(bandBatteryText)
                     .font(.caption.weight(.semibold))
                 Image(systemName: batteryIcon)
-                    .foregroundStyle(bleManager.batteryPercent == nil ? .secondary : .mint)
+                    .foregroundStyle(batteryColor)
             }
         }
         .foregroundStyle(.white)
@@ -459,6 +459,10 @@ public struct TodayView: View {
         case 35..<75: return "battery.50percent"
         default: return "battery.25percent"
         }
+    }
+
+    private var batteryColor: Color {
+        bleManager.batteryPercent == nil ? Color.secondary : Color.mint
     }
 
     private var batteryFootnote: String {
