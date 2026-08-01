@@ -43,8 +43,10 @@ jobs:
           PACKAGE_TYPE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundlePackageType' "$APP_PATH/Info.plist")"
           test "$BUNDLE_IDENTIFIER" = "personal.mywhoop.reader"
           test "$PACKAGE_TYPE" = "APPL"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIcons' "$APP_PATH/Info.plist" >/dev/null
           test -f "$APP_PATH/$EXECUTABLE_NAME"
           test -x "$APP_PATH/$EXECUTABLE_NAME"
+          test -f "$APP_PATH/Assets.car"
           rm -rf build/ipa build/validate
           mkdir -p build/ipa/Payload build/validate
           ditto "$APP_PATH" "build/ipa/Payload/MyWhoop.app"
@@ -53,7 +55,9 @@ jobs:
           test -d build/validate/Payload/MyWhoop.app
           test -f build/validate/Payload/MyWhoop.app/Info.plist
           VALIDATED_EXECUTABLE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' build/validate/Payload/MyWhoop.app/Info.plist)"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIcons' build/validate/Payload/MyWhoop.app/Info.plist >/dev/null
           test -f "build/validate/Payload/MyWhoop.app/$VALIDATED_EXECUTABLE"
+          test -f build/validate/Payload/MyWhoop.app/Assets.car
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
