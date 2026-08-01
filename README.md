@@ -58,6 +58,16 @@ This Vento workspace mounts the existing top-level `docs/` directory as read-onl
 
 Do not add guessed protocol values.
 
+The current app includes a BLE discovery mode on the Today screen:
+
+1. Tap `Scan`.
+2. Select the nearby WHOOP peripheral when it appears.
+3. Review discovered GATT services and characteristics.
+4. Watch raw notify/indicate payloads captured as hex.
+5. Copy confirmed findings into `BLE_CAPTURE_GUIDE.md`.
+
+Recovery, strain, sleep, stress, and workout calculations intentionally use published formulas and heuristics. They are not WHOOP's proprietary algorithms.
+
 ## Vento Webhook
 
 Open Settings in the app and set your Vento webhook URL. The only network operation implemented by this project is the POST performed by `Sync/VentoBridge.swift`.
