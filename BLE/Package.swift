@@ -8,12 +8,16 @@ let package = Package(
         .library(name: "BLE", targets: ["BLE"])
     ],
     dependencies: [
+        .package(path: "../Compute"),
         .package(path: "../Protocol")
     ],
     targets: [
         .target(
             name: "BLE",
-            dependencies: [.product(name: "WhoopProtocol", package: "Protocol")],
+            dependencies: [
+                .product(name: "Compute", package: "Compute"),
+                .product(name: "WhoopProtocol", package: "Protocol")
+            ],
             path: ".",
             exclude: ["Package.swift", "Tests", "README.md"],
             sources: ["BLEConnectionState.swift", "BLEManager.swift"]
