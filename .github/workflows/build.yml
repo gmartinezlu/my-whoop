@@ -1,0 +1,48 @@
+name: Build iOS
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Test packages
+        run: |
+          set -euo pipefail
+          for package in Protocol Compute Storage Sync BLE UI; do
+            swift test --package-path "$package"
+          done
+
+      - name: Build app
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project WhoopPersonal.xcodeproj \
+            -scheme MyWhoop \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package unsigned IPA
+        run: |
+          set -euo pipefail
+          APP_PATH="$(find "$HOME/Library/Developer/Xcode/DerivedData" -path '*/Build/Products/Release-iphoneos/MyWhoop.app' -type d | head -n 1)"
+          test -n "$APP_PATH"
+          mkdir -p Payload
+          cp -R "$APP_PATH" Payload/
+          zip -qry MyWhoop-unsigned.ipa Payload
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MyWhoop-unsigned-ipa
+          path: MyWhoop-unsigned.ipa
