@@ -2,11 +2,16 @@ import CoreBluetooth
 import Foundation
 
 public enum ProtocolConstants {
-    // TODO: Fill these from your own BLE capture notes in BLE_CAPTURE_GUIDE.md.
-    // Do not use guessed WHOOP UUIDs. Add only observed service UUIDs here.
+    public enum StandardBLE {
+        public static let heartRateService = CBUUID(string: "180D")
+        public static let heartRateMeasurementCharacteristic = CBUUID(string: "2A37")
+    }
+
+    // Keep scanning unfiltered until the user's WHOOP advertisement is confirmed.
     public static let serviceUUIDs: [CBUUID] = []
 
-    // TODO: Add observed readable/writable/notify characteristic UUIDs.
+    // Keep discovery unfiltered. The decoder handles public standard characteristics
+    // and leaves private WHOOP frames as raw capture until documented.
     public static let characteristicUUIDs: [CBUUID] = []
     public static let notifyCharacteristicUUIDs: [CBUUID] = []
 
