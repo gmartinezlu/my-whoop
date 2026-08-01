@@ -66,6 +66,8 @@ public final class BLEManager: NSObject, ObservableObject {
     @Published public private(set) var latestRecords: [DecodedBLERecord] = []
     @Published public private(set) var liveHeartRate: Int?
     @Published public private(set) var latestRMSSD: Double?
+    @Published public private(set) var batteryPercent: Int?
+    @Published public private(set) var stepCount: Int = 0
     @Published public private(set) var lastError: String?
 
     private let decoder: BLEProtocolDecoder
@@ -73,6 +75,7 @@ public final class BLEManager: NSObject, ObservableObject {
     private var connectedPeripheral: CBPeripheral?
     private var peripheralsByID: [UUID: CBPeripheral] = [:]
     private var rrWindowMs: [Double] = []
+    private var lastStepAt: Date?
     private var operationInFlight = false
     private var pendingOperation: (() -> Void)?
 
@@ -98,7 +101,10 @@ public final class BLEManager: NSObject, ObservableObject {
             self.latestRecords.removeAll()
             self.liveHeartRate = nil
             self.latestRMSSD = nil
+            self.batteryPercent = nil
+            self.stepCount = 0
             self.rrWindowMs.removeAll()
+            self.lastStepAt = nil
             let serviceFilter = ProtocolConstants.serviceUUIDs.isEmpty ? nil : ProtocolConstants.serviceUUIDs
             self.central.scanForPeripherals(withServices: serviceFilter, options: [
                 CBCentralManagerScanOptionAllowDuplicatesKey: false
@@ -126,7 +132,10 @@ public final class BLEManager: NSObject, ObservableObject {
             self.latestRecords.removeAll()
             self.liveHeartRate = nil
             self.latestRMSSD = nil
+            self.batteryPercent = nil
+            self.stepCount = 0
             self.rrWindowMs.removeAll()
+            self.lastStepAt = nil
             self.connectedPeripheral = peripheral
             peripheral.delegate = self
             self.central.connect(peripheral, options: nil)
@@ -227,11 +236,36 @@ public final class BLEManager: NSObject, ObservableObject {
         guard characteristic.properties.contains(.notify) || characteristic.properties.contains(.indicate) else {
             return false
         }
-        return ProtocolConstants.notifyCharacteristicUUIDs.isEmpty || ProtocolConstants.notifyCharacteristicUUIDs.contains(characteristic.uuid)
+        if !ProtocolConstants.notifyCharacteristicUUIDs.isEmpty {
+            return ProtocolConstants.notifyCharacteristicUUIDs.contains(characteristic.uuid)
+        }
+        return normalizedUUID(characteristic.uuid.uuidString) == "2A37"
     }
 
     private func hexString(_ data: Data) -> String {
         data.map { String(format: "%02X", $0) }.joined(separator: " ")
+    }
+
+    private func normalizedUUID(_ uuid: String) -> String {
+        uuid
+            .uppercased()
+            .replacingOccurrences(of: "0000", with: "", options: [.anchored])
+            .replacingOccurrences(of: "-0000-1000-8000-00805F9B34FB", with: "")
+    }
+
+    private func readStandardValueIfAvailable(_ characteristic: CBCharacteristic, on peripheral: CBPeripheral) {
+        let uuid = normalizedUUID(characteristic.uuid.uuidString)
+        if uuid == "2A19", characteristic.properties.contains(.read) {
+            peripheral.readValue(for: characteristic)
+        }
+    }
+
+    private func applyStandardValue(_ data: Data, characteristic: CBCharacteristic) -> Bool {
+        guard normalizedUUID(characteristic.uuid.uuidString) == "2A19", let first = data.first else {
+            return false
+        }
+        batteryPercent = min(max(Int(first), 0), 100)
+        return true
     }
 
     private func applyDecodedRecords(_ records: [DecodedBLERecord]) {
@@ -243,6 +277,12 @@ public final class BLEManager: NSObject, ObservableObject {
                 rrWindowMs.append(interval.milliseconds)
                 if rrWindowMs.count > 120 {
                     rrWindowMs.removeFirst(rrWindowMs.count - 120)
+                }
+            case .accelerometer(let sample):
+                let magnitude = sqrt(sample.x * sample.x + sample.y * sample.y + sample.z * sample.z)
+                if magnitude > 1.25, lastStepAt.map({ sample.timestamp.timeIntervalSince($0) > 0.28 }) ?? true {
+                    stepCount += 1
+                    lastStepAt = sample.timestamp
                 }
             default:
                 break
@@ -321,12 +361,15 @@ extension BLEManager: CBPeripheralDelegate {
             return
         }
         refreshGATTSnapshot(for: peripheral)
+        for characteristic in service.characteristics ?? [] {
+            readStandardValueIfAvailable(characteristic, on: peripheral)
+        }
         subscribeToKnownCharacteristics(on: peripheral)
     }
 
     public func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
         if let error {
-            lastError = error.localizedDescription
+            lastError = "Some private characteristics require band authentication. Public HR/Battery reads still work if exposed."
         }
         refreshGATTSnapshot(for: peripheral)
     }
@@ -337,6 +380,9 @@ extension BLEManager: CBPeripheralDelegate {
             return
         }
         guard let data = characteristic.value else { return }
+        if applyStandardValue(data, characteristic: characteristic) {
+            return
+        }
         rawNotifications.insert(
             RawBLENotification(characteristicUUID: characteristic.uuid.uuidString, hexPayload: hexString(data)),
             at: 0
@@ -349,6 +395,8 @@ extension BLEManager: CBPeripheralDelegate {
             let records = try decoder.decode(data, characteristic: characteristic.uuid.uuidString)
             latestRecords.append(contentsOf: records)
             applyDecodedRecords(records)
+        } catch BLEProtocolDecoderError.unsupportedUntilCaptureIsDocumented {
+            return
         } catch {
             lastError = error.localizedDescription
         }
