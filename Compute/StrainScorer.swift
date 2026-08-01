@@ -19,7 +19,7 @@ public enum StrainScorer {
     public static func trimp(samples: [HeartRateSample], restingHR: Double, maxHR: Double, sex: BiologicalSex) -> Double {
         guard samples.count >= 2, maxHR > restingHR else { return 0 }
         let factorA = sex == .male ? 0.64 : 0.86
-        let factorB = sex == .male ? 1.92 : 1.67
+        let factorB = sex == .male ? 2.1015 : 1.67
 
         var total = 0.0
         for pair in zip(samples, samples.dropFirst()) {
