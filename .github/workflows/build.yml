@@ -37,12 +37,26 @@ jobs:
           set -euo pipefail
           APP_PATH="$(find "$HOME/Library/Developer/Xcode/DerivedData" -path '*/Build/Products/Release-iphoneos/MyWhoop.app' -type d | head -n 1)"
           test -n "$APP_PATH"
-          mkdir -p Payload
-          cp -R "$APP_PATH" Payload/
-          zip -qry MyWhoop-unsigned.ipa Payload
+          test -f "$APP_PATH/Info.plist"
+          EXECUTABLE_NAME="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP_PATH/Info.plist")"
+          BUNDLE_IDENTIFIER="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/Info.plist")"
+          PACKAGE_TYPE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundlePackageType' "$APP_PATH/Info.plist")"
+          test "$BUNDLE_IDENTIFIER" = "personal.mywhoop.reader"
+          test "$PACKAGE_TYPE" = "APPL"
+          test -f "$APP_PATH/$EXECUTABLE_NAME"
+          test -x "$APP_PATH/$EXECUTABLE_NAME"
+          rm -rf build/ipa build/validate
+          mkdir -p build/ipa/Payload build/validate
+          ditto "$APP_PATH" "build/ipa/Payload/MyWhoop.app"
+          (cd build/ipa && ditto -c -k --sequesterRsrc --keepParent Payload ../MyWhoop-unsigned.ipa)
+          ditto -x -k build/MyWhoop-unsigned.ipa build/validate
+          test -d build/validate/Payload/MyWhoop.app
+          test -f build/validate/Payload/MyWhoop.app/Info.plist
+          VALIDATED_EXECUTABLE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' build/validate/Payload/MyWhoop.app/Info.plist)"
+          test -f "build/validate/Payload/MyWhoop.app/$VALIDATED_EXECUTABLE"
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
           name: MyWhoop-unsigned-ipa
-          path: MyWhoop-unsigned.ipa
+          path: build/MyWhoop-unsigned.ipa
