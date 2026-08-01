@@ -1,0 +1,381 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		010000000000000000000001 /* MyWhoopApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 010000000000000000000002 /* MyWhoopApp.swift */; };
+		010000000000000000000003 /* BLE in Frameworks */ = {isa = PBXBuildFile; productRef = 010000000000000000000020 /* BLE */; };
+		010000000000000000000004 /* Compute in Frameworks */ = {isa = PBXBuildFile; productRef = 010000000000000000000021 /* Compute */; };
+		010000000000000000000005 /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 010000000000000000000022 /* Storage */; };
+		010000000000000000000006 /* Sync in Frameworks */ = {isa = PBXBuildFile; productRef = 010000000000000000000023 /* Sync */; };
+		010000000000000000000007 /* WhoopUI in Frameworks */ = {isa = PBXBuildFile; productRef = 010000000000000000000024 /* WhoopUI */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		010000000000000000000002 /* MyWhoopApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyWhoopApp.swift; sourceTree = "<group>"; };
+		010000000000000000000008 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		010000000000000000000009 /* MyWhoop.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyWhoop.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		01000000000000000000000A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				010000000000000000000003 /* BLE in Frameworks */,
+				010000000000000000000004 /* Compute in Frameworks */,
+				010000000000000000000005 /* Storage in Frameworks */,
+				010000000000000000000006 /* Sync in Frameworks */,
+				010000000000000000000007 /* WhoopUI in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		01000000000000000000000B = {
+			isa = PBXGroup;
+			children = (
+				01000000000000000000000C /* App */,
+				01000000000000000000000D /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		01000000000000000000000C /* App */ = {
+			isa = PBXGroup;
+			children = (
+				010000000000000000000002 /* MyWhoopApp.swift */,
+				010000000000000000000008 /* Info.plist */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		01000000000000000000000D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				010000000000000000000009 /* MyWhoop.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		01000000000000000000000E /* MyWhoop */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 01000000000000000000000F /* Build configuration list for PBXNativeTarget "MyWhoop" */;
+			buildPhases = (
+				010000000000000000000010 /* Sources */,
+				01000000000000000000000A /* Frameworks */,
+				010000000000000000000011 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MyWhoop;
+			packageProductDependencies = (
+				010000000000000000000020 /* BLE */,
+				010000000000000000000021 /* Compute */,
+				010000000000000000000022 /* Storage */,
+				010000000000000000000023 /* Sync */,
+				010000000000000000000024 /* WhoopUI */,
+			);
+			productName = MyWhoop;
+			productReference = 010000000000000000000009 /* MyWhoop.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		010000000000000000000012 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1530;
+				LastUpgradeCheck = 1530;
+				TargetAttributes = {
+					01000000000000000000000E = {
+						CreatedOnToolsVersion = 15.3;
+					};
+				};
+			};
+			buildConfigurationList = 010000000000000000000013 /* Build configuration list for PBXProject "WhoopPersonal" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 01000000000000000000000B;
+			packageReferences = (
+				010000000000000000000030 /* XCLocalSwiftPackageReference "../BLE" */,
+				010000000000000000000031 /* XCLocalSwiftPackageReference "../Compute" */,
+				010000000000000000000032 /* XCLocalSwiftPackageReference "../Storage" */,
+				010000000000000000000033 /* XCLocalSwiftPackageReference "../Sync" */,
+				010000000000000000000034 /* XCLocalSwiftPackageReference "../UI" */,
+			);
+			productRefGroup = 01000000000000000000000D /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				01000000000000000000000E /* MyWhoop */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		010000000000000000000011 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		010000000000000000000010 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				010000000000000000000001 /* MyWhoopApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		010000000000000000000014 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		010000000000000000000015 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		010000000000000000000016 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = App/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = personal.mywhoop.reader;
+				PRODUCT_NAME = MyWhoop;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		010000000000000000000017 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = App/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = personal.mywhoop.reader;
+				PRODUCT_NAME = MyWhoop;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		010000000000000000000013 /* Build configuration list for PBXProject "WhoopPersonal" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				010000000000000000000014 /* Debug */,
+				010000000000000000000015 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		01000000000000000000000F /* Build configuration list for PBXNativeTarget "MyWhoop" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				010000000000000000000016 /* Debug */,
+				010000000000000000000017 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		010000000000000000000030 /* XCLocalSwiftPackageReference "../BLE" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = BLE;
+		};
+		010000000000000000000031 /* XCLocalSwiftPackageReference "../Compute" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Compute;
+		};
+		010000000000000000000032 /* XCLocalSwiftPackageReference "../Storage" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Storage;
+		};
+		010000000000000000000033 /* XCLocalSwiftPackageReference "../Sync" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Sync;
+		};
+		010000000000000000000034 /* XCLocalSwiftPackageReference "../UI" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = UI;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		010000000000000000000020 /* BLE */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 010000000000000000000030 /* XCLocalSwiftPackageReference "../BLE" */;
+			productName = BLE;
+		};
+		010000000000000000000021 /* Compute */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 010000000000000000000031 /* XCLocalSwiftPackageReference "../Compute" */;
+			productName = Compute;
+		};
+		010000000000000000000022 /* Storage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 010000000000000000000032 /* XCLocalSwiftPackageReference "../Storage" */;
+			productName = Storage;
+		};
+		010000000000000000000023 /* Sync */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 010000000000000000000033 /* XCLocalSwiftPackageReference "../Sync" */;
+			productName = Sync;
+		};
+		010000000000000000000024 /* WhoopUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 010000000000000000000034 /* XCLocalSwiftPackageReference "../UI" */;
+			productName = WhoopUI;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 010000000000000000000012 /* Project object */;
+}
