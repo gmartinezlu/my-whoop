@@ -1,10 +1,22 @@
 import BLE
+import Combine
+import Compute
 import SwiftUI
 import Sync
 
 public struct TodayView: View {
     @ObservedObject private var bleManager: BLEManager
     @StateObject private var stepCounter = DeviceStepCounter()
+    @AppStorage("mywhoop.moodEntries") private var moodEntriesRaw: String = "[]"
+    @State private var workoutActive = false
+    @State private var activeWorkoutSamples: [HeartRateSample] = []
+    @State private var activeWorkoutMovement: [Double] = []
+    @State private var completedWorkouts: [WorkoutSession] = []
+    @State private var dailyHeartRateSamples: [HeartRateSample] = []
+    @State private var dailyMovementSamples: [Double] = []
+    @State private var lastSampledStepCount = 0
+    @State private var previousConnectionState: BLEConnectionState = .disconnected
+    @State private var selectedMoodScore = 3
 
     private let recoveryScore: Int
     private let liveHeartRate: Int?
@@ -38,6 +50,7 @@ public struct TodayView: View {
                         coachCard
                         daySection
                         sleepCard
+                        emotionalHealthCard
                         syncCard
                         bleDiscoveryCard
                         bottomNav
@@ -57,7 +70,15 @@ public struct TodayView: View {
         }
         .preferredColorScheme(.dark)
         .onAppear {
+            ConnectionAlertManager.requestPermission()
             stepCounter.start()
+            previousConnectionState = bleManager.state
+        }
+        .onReceive(sampleTimer) { _ in
+            recordLiveSample()
+        }
+        .onChange(of: bleManager.state) { newState in
+            handleConnectionChange(newState)
         }
     }
 
@@ -127,7 +148,7 @@ public struct TodayView: View {
 
     private var scoreRow: some View {
         HStack(alignment: .top, spacing: 18) {
-            statusRing(title: "SUEÑO", value: "--%", progress: 0, color: .cyan)
+            statusRing(title: "SUEÑO", value: sleepRingText, progress: sleepProgress, color: .cyan)
             statusRing(title: "RECUPERACIÓN", value: recoveryDisplay, progress: Double(max(recoveryScore, 0)) / 100, color: recoveryColor)
             statusRing(title: "ESFUERZO", value: strainDisplay, progress: strainProgress, color: .orange)
         }
@@ -187,13 +208,25 @@ public struct TodayView: View {
                     }
 
                     HStack(spacing: 12) {
-                        actionPill(icon: "plus", title: "AGREGAR ACTIVIDAD")
-                        actionPill(icon: "stopwatch", title: "INICIAR")
+                        actionButton(icon: "plus", title: "AGREGAR", action: finishWorkout)
+                        actionButton(icon: workoutActive ? "stop.circle" : "stopwatch", title: workoutActive ? "FINALIZAR" : "INICIAR", action: toggleWorkout)
                     }
 
                     HStack(spacing: 18) {
                         metricBlock(title: "PASOS", value: stepsText, footnote: stepCounter.status)
-                        metricBlock(title: "HR EN VIVO", value: currentHeartRateText, footnote: hrvText)
+                        metricBlock(title: "HR EN VIVO", value: currentHeartRateText, footnote: workoutStatusText)
+                    }
+
+                    if !completedWorkouts.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("SESIONES")
+                                .font(.caption2.weight(.bold))
+                                .tracking(1.4)
+                                .foregroundStyle(.secondary)
+                            ForEach(Array(completedWorkouts.enumerated()), id: \.offset) { _, session in
+                                metricRow(title: workoutTimeRange(session), value: "HR \(Int(round(session.averageHR))) · strain \(String(format: "%.1f", session.strain))")
+                            }
+                        }
                     }
                 }
             }
@@ -212,21 +245,93 @@ public struct TodayView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                HStack(alignment: .top) {
-                    metricBlock(title: "OBJETIVO", value: "8:00", footnote: "Hora recomendada")
+                HStack(alignment: .top, spacing: 18) {
+                    metricBlock(title: "DURACION", value: sleepDurationText, footnote: "\(awakeningsCount) despertares")
                     Spacer()
-                    metricBlock(title: "BANDA", value: connectionDisplay, footnote: batteryFootnote)
+                    metricBlock(title: "EFICIENCIA", value: sleepEfficiencyText, footnote: "Estimacion HR + movimiento")
+                }
+
+                HStack(spacing: 8) {
+                    ForEach(Array(sleepStageFractions.enumerated()), id: \.offset) { _, item in
+                        VStack(spacing: 4) {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(stageColor(item.stage))
+                                .frame(height: max(12, 52 * item.fraction))
+                            Text(item.stage.rawValue.uppercased())
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .bottom)
+                    }
+                }
+
+                noticeRow(icon: "moon.zzz.fill", text: "Para medir toda la noche, la app necesita recibir HR/RR/movimiento mientras duermes. Si WHOOP protege esos datos privados, la app solo puede estimar con datos disponibles.", color: .cyan)
+            }
+        }
+    }
+
+    private var emotionalHealthCard: some View {
+        card {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Label("Salud emocional", systemImage: "brain.head.profile")
+                        .font(.headline.weight(.bold))
+                    Spacer()
+                    Text(moodTrend)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.mint)
+                }
+
+                HStack(spacing: 8) {
+                    ForEach(1...5, id: \.self) { score in
+                        Button {
+                            selectedMoodScore = score
+                        } label: {
+                            Text(moodLabel(score))
+                                .font(.caption.weight(.bold))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.65)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background(selectedMoodScore == score ? Color.mint.opacity(0.25) : Color.white.opacity(0.09), in: RoundedRectangle(cornerRadius: 8))
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
 
                 Button {
+                    addMoodEntry()
                 } label: {
-                    Label("EDITAR ALARMA", systemImage: "pencil")
-                        .font(.subheadline.weight(.bold))
+                    Label("GUARDAR ESTADO DE ANIMO", systemImage: "checkmark")
+                        .font(.caption.weight(.bold))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
+                        .padding(.vertical, 13)
                         .background(Color.white.opacity(0.11), in: RoundedRectangle(cornerRadius: 8))
                 }
                 .buttonStyle(.plain)
+
+                if moodEntries.isEmpty {
+                    Text("Registra tu estado de animo para ver si tu semana esta optima, estable o fluctuante.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                } else {
+                    HStack(alignment: .bottom, spacing: 8) {
+                        ForEach(Array(moodEntries.suffix(10))) { entry in
+                            VStack(spacing: 5) {
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(moodColor(entry.moodScore))
+                                    .frame(height: CGFloat(entry.moodScore) * 16)
+                                Text("\(entry.moodScore)")
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .frame(height: 96, alignment: .bottom)
+                }
             }
         }
     }
@@ -376,6 +481,13 @@ public struct TodayView: View {
             .background(Color.white.opacity(0.11), in: RoundedRectangle(cornerRadius: 8))
     }
 
+    private func actionButton(icon: String, title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            actionPill(icon: icon, title: title)
+        }
+        .buttonStyle(.plain)
+    }
+
     private func metricBlock(title: String, value: String, footnote: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(value)
@@ -440,12 +552,11 @@ public struct TodayView: View {
     }
 
     private var strainDisplay: String {
-        guard let heartRate = bleManager.liveHeartRate else { return "0" }
-        return heartRate >= 150 ? "ALTO" : heartRate >= 115 ? "MED" : "BAJO"
+        dailyStrain > 0 ? String(format: "%.1f", dailyStrain) : "0"
     }
 
     private var strainProgress: Double {
-        min(Double(max(bleManager.liveHeartRate ?? 0, 0)) / 190, 1)
+        min(dailyStrain / 21, 1)
     }
 
     private var bandBatteryText: String {
@@ -499,6 +610,15 @@ public struct TodayView: View {
         if Config.webhookURL == nil {
             return "Configura Vento para guardar tus metricas. Despues de conectar la banda, el resumen diario podra enviarse cuando haya datos suficientes."
         }
+        if workoutActive {
+            return "Actividad en curso. Mantén la intensidad si puedes hablar en frases cortas; baja el ritmo si HR sube sin movimiento o te sientes fatigado."
+        }
+        if dailyStrain >= 14 {
+            return "Ya acumulaste strain alto hoy. Prioriza recuperacion, hidratacion y movilidad suave."
+        }
+        if moodTrend == "Fluctuante" {
+            return "Tu estado emocional se ve fluctuante. Mejor una sesion tecnica o zona 2 antes que maxima intensidad."
+        }
         if let rmssd = bleManager.latestRMSSD, rmssd < 25 {
             return "HRV bajo ahora mismo. Prioriza movilidad, zona 2 suave o descanso activo hasta tener mas datos del dia."
         }
@@ -520,5 +640,186 @@ public struct TodayView: View {
         case 34...66: return .yellow
         default: return .red
         }
+    }
+
+    private var sampleTimer: Publishers.Autoconnect<Timer.TimerPublisher> {
+        Timer.publish(every: 10, on: .main, in: .common).autoconnect()
+    }
+
+    private let restingHR = 60.0
+    private let maxHR = 190.0
+    private let biologicalSex: BiologicalSex = .male
+
+    private var moodEntries: [MoodEntry] {
+        EmotionalJournalCodec.decode(moodEntriesRaw)
+    }
+
+    private var moodTrend: String {
+        EmotionalJournalCodec.trend(entries: moodEntries)
+    }
+
+    private var dailyStrain: Double {
+        let completed = completedWorkouts.map(\.strain).reduce(0, +)
+        let activeTRIMP = StrainScorer.trimp(samples: activeWorkoutSamples, restingHR: restingHR, maxHR: maxHR, sex: biologicalSex)
+        return min(21, completed + StrainScorer.strainScore(fromTRIMP: activeTRIMP))
+    }
+
+    private var workoutStatusText: String {
+        if workoutActive {
+            return "\(activeWorkoutSamples.count) muestras · \(hrvText)"
+        }
+        return completedWorkouts.isEmpty ? hrvText : "\(completedWorkouts.count) sesiones · \(hrvText)"
+    }
+
+    private var sleepSummary: SleepSummary {
+        SleepStager.stage(samples: dailyHeartRateSamples, movement: dailyMovementSamples, restingHR: restingHR)
+    }
+
+    private var sleepRingText: String {
+        sleepSummary.sleepHours > 0 ? "\(Int(round(sleepSummary.efficiencyPercent)))%" : "--%"
+    }
+
+    private var sleepProgress: Double {
+        min(max(sleepSummary.efficiencyPercent / 100, 0), 1)
+    }
+
+    private var sleepDurationText: String {
+        guard sleepSummary.sleepHours > 0 else { return "--" }
+        let totalMinutes = Int(round(sleepSummary.sleepHours * 60))
+        return "\(totalMinutes / 60):\(String(format: "%02d", totalMinutes % 60))"
+    }
+
+    private var sleepEfficiencyText: String {
+        sleepSummary.sleepHours > 0 ? "\(Int(round(sleepSummary.efficiencyPercent)))%" : "--%"
+    }
+
+    private var awakeningsCount: Int {
+        let epochs = sleepSummary.epochs
+        guard epochs.count > 1 else { return 0 }
+        return zip(epochs, epochs.dropFirst()).filter { $0.stage != .awake && $1.stage == .awake }.count
+    }
+
+    private var sleepStageFractions: [(stage: SleepStage, fraction: Double)] {
+        let epochs = sleepSummary.epochs
+        guard !epochs.isEmpty else {
+            return [(.awake, 0.05), (.light, 0.05), (.deep, 0.05), (.rem, 0.05)]
+        }
+        let total = Double(epochs.count)
+        return [SleepStage.awake, .light, .deep, .rem].map { stage in
+            let count = Double(epochs.filter { $0.stage == stage }.count)
+            return (stage, max(count / total, 0.05))
+        }
+    }
+
+    private func recordLiveSample() {
+        let steps = stepCounter.steps + bleManager.stepCount
+        let stepDelta = max(steps - lastSampledStepCount, 0)
+        lastSampledStepCount = steps
+        let movement = min(Double(stepDelta) / 12.0, 1.0)
+
+        guard let heartRate = bleManager.liveHeartRate else { return }
+        let sample = HeartRateSample(timestamp: Date(), bpm: Double(heartRate))
+        dailyHeartRateSamples.append(sample)
+        dailyMovementSamples.append(movement)
+
+        if dailyHeartRateSamples.count > 2880 {
+            dailyHeartRateSamples.removeFirst(dailyHeartRateSamples.count - 2880)
+            dailyMovementSamples.removeFirst(max(dailyMovementSamples.count - 2880, 0))
+        }
+
+        if workoutActive {
+            activeWorkoutSamples.append(sample)
+            activeWorkoutMovement.append(movement)
+        }
+    }
+
+    private func toggleWorkout() {
+        workoutActive ? finishWorkout() : startWorkout()
+    }
+
+    private func startWorkout() {
+        activeWorkoutSamples.removeAll()
+        activeWorkoutMovement.removeAll()
+        workoutActive = true
+        recordLiveSample()
+    }
+
+    private func finishWorkout() {
+        guard workoutActive else { return }
+        workoutActive = false
+        let detected = WorkoutDetector.detect(
+            samples: activeWorkoutSamples,
+            movement: activeWorkoutMovement,
+            restingHR: restingHR,
+            maxHR: maxHR,
+            sex: biologicalSex,
+            minDuration: 60
+        )
+        if let session = detected.last {
+            completedWorkouts.append(session)
+        } else if let first = activeWorkoutSamples.first, let last = activeWorkoutSamples.last, activeWorkoutSamples.count >= 2 {
+            let averageHR = activeWorkoutSamples.map(\.bpm).reduce(0, +) / Double(activeWorkoutSamples.count)
+            let trimp = StrainScorer.trimp(samples: activeWorkoutSamples, restingHR: restingHR, maxHR: maxHR, sex: biologicalSex)
+            completedWorkouts.append(WorkoutSession(start: first.timestamp, end: last.timestamp, averageHR: averageHR, strain: StrainScorer.strainScore(fromTRIMP: trimp)))
+        }
+        activeWorkoutSamples.removeAll()
+        activeWorkoutMovement.removeAll()
+    }
+
+    private func handleConnectionChange(_ newState: BLEConnectionState) {
+        guard newState != previousConnectionState else { return }
+        let oldState = previousConnectionState
+        previousConnectionState = newState
+        if newState == .live || newState == .connected {
+            ConnectionAlertManager.notify(title: "Banda conectada", body: "MyWhoop esta recibiendo datos de la banda.")
+        } else if oldState == .live || oldState == .connected {
+            ConnectionAlertManager.notify(title: "Banda desconectada", body: "Se perdio la conexion Bluetooth con la banda.")
+        }
+    }
+
+    private func addMoodEntry() {
+        var entries = moodEntries
+        entries.append(MoodEntry(moodScore: selectedMoodScore))
+        if entries.count > 60 {
+            entries.removeFirst(entries.count - 60)
+        }
+        moodEntriesRaw = EmotionalJournalCodec.encode(entries)
+    }
+
+    private func moodLabel(_ score: Int) -> String {
+        switch score {
+        case 1: return "Bajo"
+        case 2: return "Tenso"
+        case 3: return "Normal"
+        case 4: return "Bien"
+        default: return "Optimo"
+        }
+    }
+
+    private func moodColor(_ score: Int) -> Color {
+        switch score {
+        case 1...2: return .orange
+        case 3: return .yellow
+        default: return .mint
+        }
+    }
+
+    private func stageColor(_ stage: SleepStage) -> Color {
+        switch stage {
+        case .awake: return .orange
+        case .light: return .cyan
+        case .deep: return .blue
+        case .rem: return .purple
+        }
+    }
+
+    private func workoutTimeRange(_ session: WorkoutSession) -> String {
+        "\(timeFormatter.string(from: session.start))-\(timeFormatter.string(from: session.end))"
+    }
+
+    private var timeFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter
     }
 }

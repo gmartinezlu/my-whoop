@@ -9,15 +9,16 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../BLE"),
+        .package(path: "../Compute"),
         .package(path: "../Sync")
     ],
     targets: [
         .target(
             name: "WhoopUI",
-            dependencies: ["BLE", "Sync"],
+            dependencies: ["BLE", "Compute", "Sync"],
             path: ".",
             exclude: ["Package.swift", "Tests", "README.md"],
-            sources: ["TodayView.swift", "SettingsView.swift", "DeviceStepCounter.swift"]
+            sources: ["TodayView.swift", "SettingsView.swift", "DeviceStepCounter.swift", "ConnectionAlertManager.swift", "EmotionalJournal.swift"]
         ),
         .testTarget(
             name: "WhoopUITests",
