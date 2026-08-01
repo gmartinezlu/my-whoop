@@ -62,7 +62,8 @@ public struct TodayView: View {
 
     private var summaryPanel: some View {
         VStack(spacing: 14) {
-            metricRow(title: "Live HR", value: liveHeartRate.map { "\($0) bpm" } ?? "--")
+            metricRow(title: "Live HR", value: (bleManager.liveHeartRate ?? liveHeartRate).map { "\($0) bpm" } ?? "--")
+            metricRow(title: "Live HRV", value: bleManager.latestRMSSD.map { "\(Int(round($0))) ms RMSSD" } ?? "--")
             metricRow(title: "Band", value: bleManager.state.rawValue)
             metricRow(title: "Last Vento sync", value: lastSyncDescription)
             metricRow(title: "Pending queue", value: "\(pendingOutboxCount)")
