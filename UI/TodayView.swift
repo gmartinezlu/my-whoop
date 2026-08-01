@@ -1,5 +1,6 @@
 import BLE
 import SwiftUI
+import Sync
 
 public struct TodayView: View {
     @ObservedObject private var bleManager: BLEManager
@@ -24,183 +25,304 @@ public struct TodayView: View {
 
     public var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    ZStack {
-                        Circle()
-                            .stroke(Color.secondary.opacity(0.18), lineWidth: 18)
-                        Circle()
-                            .trim(from: 0, to: CGFloat(min(max(recoveryScore, 0), 100)) / 100)
-                            .stroke(recoveryColor, style: StrokeStyle(lineWidth: 18, lineCap: .round))
-                            .rotationEffect(.degrees(-90))
-                        VStack(spacing: 4) {
-                            Text("\(recoveryScore)")
-                                .font(.system(size: 56, weight: .semibold, design: .rounded))
-                            Text("Recovery")
-                                .font(.headline)
-                                .foregroundStyle(.secondary)
-                        }
+            ZStack {
+                LinearGradient(
+                    colors: [Color(red: 0.10, green: 0.15, blue: 0.16), Color(red: 0.02, green: 0.04, blue: 0.05)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
+
+                ScrollView {
+                    VStack(spacing: 22) {
+                        header
+                        scoreRow
+                        coachCard
+                        daySection
+                        sleepCard
+                        syncCard
+                        bleDiscoveryCard
                     }
-                    .frame(width: 220, height: 220)
-
-                    summaryPanel
-                    controls
-                    discoveryPanel
-                    gattPanel
-                    rawCapturePanel
+                    .padding(.horizontal, 18)
+                    .padding(.top, 16)
+                    .padding(.bottom, 28)
                 }
-                .padding()
             }
-            .navigationTitle("Today")
             .toolbar {
-                NavigationLink("Settings") {
+                NavigationLink {
                     SettingsView()
+                } label: {
+                    Image(systemName: "gearshape")
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+
+    private var header: some View {
+        HStack {
+            Image(systemName: "person.crop.circle")
+                .font(.system(size: 34, weight: .medium))
+            Spacer()
+            HStack(spacing: 14) {
+                Image(systemName: "chevron.left")
+                    .foregroundStyle(.secondary)
+                Text("HOY")
+                    .font(.subheadline.weight(.bold))
+                    .tracking(1.5)
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
+            .background(Color.white.opacity(0.08), in: Capsule())
+            Spacer()
+            HStack(spacing: 5) {
+                Text(bandBatteryText)
+                    .font(.caption.weight(.semibold))
+                Image(systemName: "battery.75")
+                    .foregroundStyle(.mint)
+            }
+        }
+        .foregroundStyle(.white)
+    }
+
+    private var scoreRow: some View {
+        HStack(alignment: .top, spacing: 18) {
+            statusRing(title: "SUEÑO", value: "--", progress: 0, color: .cyan)
+            statusRing(title: "RECUPERACIÓN", value: recoveryDisplay, progress: Double(max(recoveryScore, 0)) / 100, color: recoveryColor)
+            statusRing(title: "ESFUERZO", value: strainDisplay, progress: min(Double(max(bleManager.liveHeartRate ?? 0, 0)) / 190, 1), color: .orange)
+        }
+    }
+
+    private var coachCard: some View {
+        card {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Label("Coach", systemImage: "sparkles")
+                        .font(.headline.weight(.semibold))
+                    Spacer()
+                    Text("LOCAL")
+                        .font(.caption2.weight(.bold))
+                        .tracking(1.2)
+                        .foregroundStyle(.mint)
+                }
+                Text(coachMessage)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.white.opacity(0.92))
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("El coach usa reglas locales por ahora; no envía datos a IA externa.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var daySection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("Mi día")
+                    .font(.title2.weight(.bold))
+                Spacer()
+                Button {
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.title3.weight(.bold))
+                        .frame(width: 48, height: 48)
+                        .background(Color.white, in: RoundedRectangle(cornerRadius: 8))
+                        .foregroundStyle(.black)
+                }
+                .buttonStyle(.plain)
+            }
+
+            card {
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack {
+                        Text("ACTIVIDADES DE HOY")
+                            .font(.caption.weight(.bold))
+                            .tracking(1.8)
+                        Spacer()
+                        Image(systemName: "arrow.up.left.and.arrow.down.right")
+                            .foregroundStyle(.secondary)
+                    }
+                    HStack(spacing: 12) {
+                        actionPill(icon: "plus", title: "AGREGAR")
+                        actionPill(icon: "stopwatch", title: "INICIAR")
+                    }
+                    HStack {
+                        metricBlock(title: "PASOS", value: "\(bleManager.stepCount)")
+                        metricBlock(title: "HR EN VIVO", value: currentHeartRateText)
+                    }
                 }
             }
         }
     }
 
-    private var summaryPanel: some View {
-        VStack(spacing: 14) {
-            metricRow(title: "Live HR", value: (bleManager.liveHeartRate ?? liveHeartRate).map { "\($0) bpm" } ?? "--")
-            metricRow(title: "Live HRV", value: bleManager.latestRMSSD.map { "\(Int(round($0))) ms RMSSD" } ?? "--")
-            metricRow(title: "Band", value: bleManager.state.rawValue)
-            metricRow(title: "Last Vento sync", value: lastSyncDescription)
-            metricRow(title: "Pending queue", value: "\(pendingOutboxCount)")
-            if let lastError = bleManager.lastError {
-                metricRow(title: "BLE note", value: lastError)
+    private var sleepCard: some View {
+        card {
+            VStack(alignment: .leading, spacing: 18) {
+                HStack {
+                    Text("EL SUEÑO DE ESTA NOCHE")
+                        .font(.caption.weight(.bold))
+                        .tracking(1.5)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .foregroundStyle(.secondary)
+                }
+                HStack {
+                    metricBlock(title: "OBJETIVO", value: "8:00")
+                    Spacer()
+                    metricBlock(title: "BANDA", value: bleManager.state.rawValue.uppercased())
+                }
+                Button {
+                } label: {
+                    Label("EDITAR ALARMA", systemImage: "pencil")
+                        .font(.subheadline.weight(.bold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color.white.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
+                }
+                .buttonStyle(.plain)
             }
         }
-        .padding()
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8))
     }
 
-    private var controls: some View {
-        HStack {
-            Button("Scan") {
-                bleManager.scan()
+    private var syncCard: some View {
+        card {
+            VStack(alignment: .leading, spacing: 12) {
+                Label("Vento Sync", systemImage: "arrow.triangle.2.circlepath")
+                    .font(.headline.weight(.semibold))
+                metricRow(title: "Último envío", value: syncStatusText)
+                metricRow(title: "Pendientes", value: "\(pendingOutboxCount)")
+                metricRow(title: "Webhook", value: Config.webhookURL == nil ? "No configurado" : "Configurado")
             }
-            .buttonStyle(.borderedProminent)
-
-            Button("Disconnect") {
-                bleManager.disconnect()
-            }
-            .buttonStyle(.bordered)
         }
     }
 
-    private var discoveryPanel: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Nearby bands")
-                .font(.headline)
-            if bleManager.discoveredPeripherals.isEmpty {
-                Text("Tap Scan, then choose the WHOOP entry when it appears.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(bleManager.discoveredPeripherals) { peripheral in
-                    Button {
-                        bleManager.connect(to: peripheral.id)
-                    } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(peripheral.name)
-                                    .font(.subheadline.weight(.semibold))
-                                Text(peripheral.id.uuidString)
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                                if !peripheral.serviceUUIDs.isEmpty {
-                                    Text(peripheral.serviceUUIDs.joined(separator: ", "))
+    private var bleDiscoveryCard: some View {
+        card {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Label("BLE", systemImage: "dot.radiowaves.left.and.right")
+                        .font(.headline.weight(.semibold))
+                    Spacer()
+                    Button("Scan") {
+                        bleManager.scan()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    Button("Disconnect") {
+                        bleManager.disconnect()
+                    }
+                    .buttonStyle(.bordered)
+                }
+
+                if let lastError = bleManager.lastError {
+                    Text(lastError)
+                        .font(.caption)
+                        .foregroundStyle(.yellow)
+                }
+
+                if bleManager.discoveredPeripherals.isEmpty {
+                    Text("Toca Scan y elige tu banda cuando aparezca.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(Array(bleManager.discoveredPeripherals.prefix(5))) { peripheral in
+                        Button {
+                            bleManager.connect(to: peripheral.id)
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(peripheral.name)
+                                        .font(.subheadline.weight(.semibold))
+                                    Text(peripheral.id.uuidString)
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
-                                        .lineLimit(2)
+                                        .lineLimit(1)
                                 }
-                            }
-                            Spacer()
-                            Text("\(peripheral.rssi) dBm")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    Divider()
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8))
-    }
-
-    private var gattPanel: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("GATT report")
-                .font(.headline)
-            if bleManager.gattServices.isEmpty {
-                Text("Services and characteristics will appear after connection.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(bleManager.gattServices) { service in
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(service.uuid)
-                            .font(.caption.weight(.semibold))
-                        ForEach(service.characteristics) { characteristic in
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(characteristic.uuid)
-                                    .font(.caption2)
-                                Text(characteristic.properties.joined(separator: ", "))
-                                    .font(.caption2)
+                                Spacer()
+                                Text("\(peripheral.rssi) dBm")
+                                    .font(.caption)
                                     .foregroundStyle(.secondary)
-                                if characteristic.isNotifying {
-                                    Text("notifying")
-                                        .font(.caption2.weight(.medium))
-                                        .foregroundStyle(.green)
-                                }
                             }
                         }
+                        .buttonStyle(.plain)
+                        Divider().background(Color.white.opacity(0.08))
                     }
-                    Divider()
+                }
+
+                if !bleManager.gattServices.isEmpty {
+                    Text("GATT: \(bleManager.gattServices.count) servicios encontrados")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.mint)
+                }
+
+                if !bleManager.rawNotifications.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("RAW")
+                            .font(.caption.weight(.bold))
+                            .tracking(1.4)
+                        ForEach(Array(bleManager.rawNotifications.prefix(4))) { notification in
+                            Text("\(notification.characteristicUUID): \(notification.hexPayload)")
+                                .font(.system(.caption2, design: .monospaced))
+                                .lineLimit(2)
+                                .textSelection(.enabled)
+                        }
+                    }
                 }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8))
     }
 
-    private var rawCapturePanel: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Raw notifications")
-                .font(.headline)
-            if bleManager.rawNotifications.isEmpty {
-                Text("Subscribed notify/indicate payloads will be captured here as hex.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(bleManager.rawNotifications.prefix(20)) { notification in
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(notification.characteristicUUID)
-                            .font(.caption2.weight(.semibold))
-                        Text(notification.hexPayload)
-                            .font(.system(.caption2, design: .monospaced))
-                            .textSelection(.enabled)
-                    }
-                    Divider()
-                }
+    private func statusRing(title: String, value: String, progress: Double, color: Color) -> some View {
+        VStack(spacing: 10) {
+            ZStack {
+                Circle()
+                    .stroke(Color.white.opacity(0.10), lineWidth: 8)
+                Circle()
+                    .trim(from: 0, to: min(max(progress, 0), 1))
+                    .stroke(color, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                Text(value)
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(.white)
             }
+            .frame(width: 88, height: 88)
+            Text(title)
+                .font(.caption.weight(.bold))
+                .tracking(1.2)
+                .foregroundStyle(.white.opacity(0.86))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8))
+        .frame(maxWidth: .infinity)
     }
 
-    private var recoveryColor: Color {
-        switch recoveryScore {
-        case 67...100: return .green
-        case 34...66: return .yellow
-        default: return .red
+    private func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        content()
+            .padding(18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(red: 0.15, green: 0.18, blue: 0.19).opacity(0.96), in: RoundedRectangle(cornerRadius: 8))
+            .foregroundStyle(.white)
+    }
+
+    private func actionPill(icon: String, title: String) -> some View {
+        Label(title, systemImage: icon)
+            .font(.caption.weight(.bold))
+            .tracking(1)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(Color.white.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func metricBlock(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(value)
+                .font(.title2.weight(.bold))
+            Text(title)
+                .font(.caption2.weight(.bold))
+                .tracking(1.4)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -211,6 +333,59 @@ public struct TodayView: View {
             Spacer()
             Text(value)
                 .fontWeight(.medium)
+                .multilineTextAlignment(.trailing)
+        }
+        .font(.subheadline)
+    }
+
+    private var currentHeartRateText: String {
+        (bleManager.liveHeartRate ?? liveHeartRate).map { "\($0)" } ?? "--"
+    }
+
+    private var recoveryDisplay: String {
+        recoveryScore > 0 ? "\(recoveryScore)%" : "--%"
+    }
+
+    private var strainDisplay: String {
+        guard let heartRate = bleManager.liveHeartRate else { return "--" }
+        return heartRate >= 120 ? "ALTA" : "BAJA"
+    }
+
+    private var bandBatteryText: String {
+        bleManager.batteryPercent.map { "\($0)%" } ?? "--%"
+    }
+
+    private var syncStatusText: String {
+        if Config.webhookURL == nil {
+            return "Configura webhook"
+        }
+        return lastSyncDescription == "Never" ? "Sin envíos aún" : lastSyncDescription
+    }
+
+    private var coachMessage: String {
+        if Config.webhookURL == nil {
+            return "Configura Vento para guardar tus métricas. Después de conectar la banda, el resumen diario podrá enviarse automáticamente."
+        }
+        if let rmssd = bleManager.latestRMSSD, rmssd < 25 {
+            return "HRV bajo ahora mismo. Prioriza movilidad, zona 2 suave o descanso activo hasta tener más datos del día."
+        }
+        if let heartRate = bleManager.liveHeartRate, heartRate > 110 {
+            return "Tu frecuencia está elevada. Si estás entrenando, mantén el bloque; si estás en reposo, espera a recuperar antes de alta intensidad."
+        }
+        if recoveryScore >= 67 {
+            return "Buen día para entrenar fuerte si dormiste bien. Calienta progresivo y revisa strain después de la sesión."
+        }
+        if recoveryScore > 0 {
+            return "Día moderado. Entrena técnica, fuerza controlada o cardio suave según cómo te sientas."
+        }
+        return "Conecta la banda para medir HR/HRV en vivo. Con esos datos puedo darte una recomendación más útil para hoy."
+    }
+
+    private var recoveryColor: Color {
+        switch recoveryScore {
+        case 67...100: return .mint
+        case 34...66: return .yellow
+        default: return .red
         }
     }
 }
