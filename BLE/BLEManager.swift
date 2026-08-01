@@ -1,4 +1,5 @@
 import Combine
+import Compute
 import CoreBluetooth
 import Foundation
 import WhoopProtocol
@@ -63,12 +64,15 @@ public final class BLEManager: NSObject, ObservableObject {
     @Published public private(set) var gattServices: [GATTServiceSnapshot] = []
     @Published public private(set) var rawNotifications: [RawBLENotification] = []
     @Published public private(set) var latestRecords: [DecodedBLERecord] = []
+    @Published public private(set) var liveHeartRate: Int?
+    @Published public private(set) var latestRMSSD: Double?
     @Published public private(set) var lastError: String?
 
     private let decoder: BLEProtocolDecoder
     private var central: CBCentralManager!
     private var connectedPeripheral: CBPeripheral?
     private var peripheralsByID: [UUID: CBPeripheral] = [:]
+    private var rrWindowMs: [Double] = []
     private var operationInFlight = false
     private var pendingOperation: (() -> Void)?
 
@@ -91,6 +95,10 @@ public final class BLEManager: NSObject, ObservableObject {
             self.discoveredPeripherals.removeAll()
             self.gattServices.removeAll()
             self.rawNotifications.removeAll()
+            self.latestRecords.removeAll()
+            self.liveHeartRate = nil
+            self.latestRMSSD = nil
+            self.rrWindowMs.removeAll()
             let serviceFilter = ProtocolConstants.serviceUUIDs.isEmpty ? nil : ProtocolConstants.serviceUUIDs
             self.central.scanForPeripherals(withServices: serviceFilter, options: [
                 CBCentralManagerScanOptionAllowDuplicatesKey: false
@@ -115,6 +123,10 @@ public final class BLEManager: NSObject, ObservableObject {
             self.state = .connecting
             self.gattServices.removeAll()
             self.rawNotifications.removeAll()
+            self.latestRecords.removeAll()
+            self.liveHeartRate = nil
+            self.latestRMSSD = nil
+            self.rrWindowMs.removeAll()
             self.connectedPeripheral = peripheral
             peripheral.delegate = self
             self.central.connect(peripheral, options: nil)
@@ -221,6 +233,26 @@ public final class BLEManager: NSObject, ObservableObject {
     private func hexString(_ data: Data) -> String {
         data.map { String(format: "%02X", $0) }.joined(separator: " ")
     }
+
+    private func applyDecodedRecords(_ records: [DecodedBLERecord]) {
+        for record in records {
+            switch record {
+            case .heartRate(let heartRate):
+                liveHeartRate = heartRate.bpm
+            case .rrInterval(let interval):
+                rrWindowMs.append(interval.milliseconds)
+                if rrWindowMs.count > 120 {
+                    rrWindowMs.removeFirst(rrWindowMs.count - 120)
+                }
+            default:
+                break
+            }
+        }
+
+        if let metrics = HRVAnalyzer.metrics(rrIntervalsMs: rrWindowMs) {
+            latestRMSSD = metrics.rmssdMs
+        }
+    }
 }
 
 extension BLEManager: CBCentralManagerDelegate {
@@ -316,6 +348,7 @@ extension BLEManager: CBPeripheralDelegate {
         do {
             let records = try decoder.decode(data, characteristic: characteristic.uuid.uuidString)
             latestRecords.append(contentsOf: records)
+            applyDecodedRecords(records)
         } catch {
             lastError = error.localizedDescription
         }
