@@ -10,8 +10,10 @@ public struct SettingsView: View {
         Form {
             Section("Vento") {
                 TextField("Webhook URL", text: $webhookURL)
+                    #if os(iOS)
                     .textInputAutocapitalization(.never)
                     .keyboardType(.URL)
+                    #endif
                     .autocorrectionDisabled()
             }
         }
