@@ -5,6 +5,8 @@ public enum ProtocolConstants {
     public enum StandardBLE {
         public static let heartRateService = CBUUID(string: "180D")
         public static let heartRateMeasurementCharacteristic = CBUUID(string: "2A37")
+        public static let batteryService = CBUUID(string: "180F")
+        public static let batteryLevelCharacteristic = CBUUID(string: "2A19")
     }
 
     // Keep scanning unfiltered until the user's WHOOP advertisement is confirmed.
