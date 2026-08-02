@@ -48,7 +48,9 @@ To install with AltStore or SideStore:
 4. Import the extracted `MyWhoop-unsigned.ipa` into AltStore or SideStore.
 5. Sign it with your free Apple ID through the sideloading app.
 
-GitHub Actions always wraps artifacts in a ZIP container. Do not import that outer ZIP into AltStore; import the `.ipa` file inside it. The `.ipa` is intentionally unsigned. A free Apple ID signs it during sideloading; no paid Apple Developer entitlements are required for this first version.
+GitHub Actions always wraps artifacts in a ZIP container. Do not import that outer ZIP into AltStore; import the `.ipa` file inside it. The `.ipa` is intentionally unsigned. A free Apple ID signs it during sideloading; no paid Apple Developer entitlements are required for this AltStore-compatible build.
+
+This build does not embed the HealthKit entitlement because that entitlement can be rejected by free Apple ID sideloading. Health-related cards still compile and run; values that require Apple Health authorization will show as unavailable unless you later rebuild with a signing profile that supports HealthKit.
 
 ## Protocol Capture Workflow
 

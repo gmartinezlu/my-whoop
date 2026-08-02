@@ -47,6 +47,10 @@ jobs:
           test -f "$APP_PATH/$EXECUTABLE_NAME"
           test -x "$APP_PATH/$EXECUTABLE_NAME"
           test -f "$APP_PATH/Assets.car"
+          test ! -f "$APP_PATH/embedded.mobileprovision"
+          if codesign -d --entitlements :- "$APP_PATH" >/tmp/mywhoop-entitlements.plist 2>/dev/null; then
+            ! grep -q "com.apple.developer.healthkit" /tmp/mywhoop-entitlements.plist
+          fi
           rm -rf build/ipa build/validate
           mkdir -p build/ipa/Payload build/validate
           ditto "$APP_PATH" "build/ipa/Payload/MyWhoop.app"
@@ -57,7 +61,11 @@ jobs:
           VALIDATED_EXECUTABLE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' build/validate/Payload/MyWhoop.app/Info.plist)"
           /usr/libexec/PlistBuddy -c 'Print :CFBundleIcons' build/validate/Payload/MyWhoop.app/Info.plist >/dev/null
           test -f "build/validate/Payload/MyWhoop.app/$VALIDATED_EXECUTABLE"
+          test -x "build/validate/Payload/MyWhoop.app/$VALIDATED_EXECUTABLE"
           test -f build/validate/Payload/MyWhoop.app/Assets.car
+          test ! -f build/validate/Payload/MyWhoop.app/embedded.mobileprovision
+          test "$(find build/validate -maxdepth 1 -type d -name Payload | wc -l | tr -d ' ')" = "1"
+          test "$(find build/validate/Payload -maxdepth 1 -type d -name '*.app' | wc -l | tr -d ' ')" = "1"
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
