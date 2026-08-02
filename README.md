@@ -50,7 +50,9 @@ To install with AltStore or SideStore:
 
 GitHub Actions always wraps artifacts in a ZIP container. Do not import that outer ZIP into AltStore; import the `.ipa` file inside it. The `.ipa` is intentionally unsigned. A free Apple ID signs it during sideloading; no paid Apple Developer entitlements are required for this AltStore-compatible build.
 
-This build does not embed the HealthKit entitlement because that entitlement can be rejected by free Apple ID sideloading. Health-related cards still compile and run; values that require Apple Health authorization will show as unavailable unless you later rebuild with a signing profile that supports HealthKit.
+This build declares the HealthKit entitlement so Apple Health can authorize steps, sleep, VO2 max, workouts, calories, and menstrual-cycle reads. AltStore/SideStore still has to re-sign the IPA with a provisioning profile that allows HealthKit. If the Apple ID or sideloading profile does not include that entitlement, installation or Health authorization can fail even though the app project is configured correctly.
+
+In Settings, tap `Usar webhook de mywhoop` for metric sync and `Usar coach de mywhoop` for the Vento AI coach endpoint.
 
 ## Protocol Capture Workflow
 

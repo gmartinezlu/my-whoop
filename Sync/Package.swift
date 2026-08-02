@@ -12,7 +12,7 @@ let package = Package(
             name: "Sync",
             path: ".",
             exclude: ["Package.swift", "Tests", "README.md"],
-            sources: ["Config.swift", "VentoBridge.swift"]
+            sources: ["Config.swift", "VentoBridge.swift", "VentoCoachBridge.swift"]
         ),
         .testTarget(
             name: "SyncTests",

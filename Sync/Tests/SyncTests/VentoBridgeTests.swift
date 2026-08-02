@@ -23,4 +23,26 @@ final class VentoBridgeTests: XCTestCase {
         XCTAssertNotNil(object["workouts"])
         XCTAssertEqual(object["stress_avg"] as? Double, 35)
     }
+
+    func testCoachMetricsEncodesHealthContext() throws {
+        let metrics = VentoCoachMetrics(
+            live_hr: 72,
+            hrv_rmssd_ms: 48,
+            recovery_score: 75,
+            strain_score: 6.5,
+            steps: 8300,
+            active_calories_kcal: 420,
+            vo2max: 38.2,
+            sleep_hours: 7.1,
+            awakenings: 2,
+            menstrual_cycle_day: 12,
+            menstrual_phase: "Folicular",
+            mood_trend: "Estable",
+            workout_active: false
+        )
+        let data = try JSONEncoder().encode(metrics)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertEqual(object["menstrual_phase"] as? String, "Folicular")
+        XCTAssertEqual(object["steps"] as? Int, 8300)
+    }
 }

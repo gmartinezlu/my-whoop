@@ -48,9 +48,18 @@ jobs:
           test -x "$APP_PATH/$EXECUTABLE_NAME"
           test -f "$APP_PATH/Assets.car"
           test ! -f "$APP_PATH/embedded.mobileprovision"
-          if codesign -d --entitlements :- "$APP_PATH" >/tmp/mywhoop-entitlements.plist 2>/dev/null; then
-            ! grep -q "com.apple.developer.healthkit" /tmp/mywhoop-entitlements.plist
+          /usr/libexec/PlistBuddy -c 'Print :com.apple.developer.healthkit' App/MyWhoop.entitlements | grep -q true
+          if [ -d "$APP_PATH/Frameworks" ]; then
+            find "$APP_PATH/Frameworks" -type d -name '*.framework' -print0 | while IFS= read -r -d '' framework; do
+              codesign --force --sign - "$framework"
+            done
+            find "$APP_PATH/Frameworks" -type f -name '*.dylib' -print0 | while IFS= read -r -d '' dylib; do
+              codesign --force --sign - "$dylib"
+            done
           fi
+          codesign --force --sign - --entitlements App/MyWhoop.entitlements "$APP_PATH"
+          codesign -d --entitlements :- "$APP_PATH" >/tmp/mywhoop-entitlements.plist 2>/dev/null
+          grep -q "com.apple.developer.healthkit" /tmp/mywhoop-entitlements.plist
           rm -rf build/ipa build/validate
           mkdir -p build/ipa/Payload build/validate
           ditto "$APP_PATH" "build/ipa/Payload/MyWhoop.app"
@@ -64,6 +73,8 @@ jobs:
           test -x "build/validate/Payload/MyWhoop.app/$VALIDATED_EXECUTABLE"
           test -f build/validate/Payload/MyWhoop.app/Assets.car
           test ! -f build/validate/Payload/MyWhoop.app/embedded.mobileprovision
+          codesign -d --entitlements :- build/validate/Payload/MyWhoop.app >/tmp/mywhoop-validated-entitlements.plist 2>/dev/null
+          grep -q "com.apple.developer.healthkit" /tmp/mywhoop-validated-entitlements.plist
           test "$(find build/validate -maxdepth 1 -type d -name Payload | wc -l | tr -d ' ')" = "1"
           test "$(find build/validate/Payload -maxdepth 1 -type d -name '*.app' | wc -l | tr -d ' ')" = "1"
 

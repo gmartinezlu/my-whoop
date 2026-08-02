@@ -19,6 +19,11 @@ public struct TodayView: View {
     @State private var previousConnectionState: BLEConnectionState = .disconnected
     @State private var selectedMoodScore = 3
     @State private var ecgPoints: [Double] = Array(repeating: 0.50, count: 72)
+    @State private var coachSummary: String?
+    @State private var coachRecommendation: String?
+    @State private var coachFocus: String?
+    @State private var coachStatus = "Listo"
+    @State private var requestingCoach = false
 
     private let recoveryScore: Int
     private let liveHeartRate: Int?
@@ -168,16 +173,36 @@ public struct TodayView: View {
                     Label("Coach diario", systemImage: "sparkles")
                         .font(.headline.weight(.bold))
                     Spacer()
-                    Text("LOCAL")
+                    Text(Config.coachURL == nil ? "OFF" : "VENTO")
                         .font(.caption2.weight(.bold))
                         .tracking(1.2)
-                        .foregroundStyle(.mint)
+                        .foregroundStyle(Config.coachURL == nil ? .orange : .mint)
                 }
-                Text(coachMessage)
+                Text(coachRecommendation ?? coachMessage)
                     .font(.body.weight(.semibold))
                     .foregroundStyle(.white.opacity(0.94))
                     .fixedSize(horizontal: false, vertical: true)
-                Text("Puede convertirse en IA real usando tu backend Vento, pero eso agregaria una llamada de red adicional que todavia no esta permitida por los requisitos originales.")
+                if let coachSummary {
+                    Text(coachSummary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let coachFocus {
+                    metricRow(title: "Enfoque", value: coachFocus)
+                }
+                Button {
+                    requestVentoCoach()
+                } label: {
+                    Label(requestingCoach ? "CONSULTANDO VENTO" : "CONSULTAR COACH IA", systemImage: "sparkles")
+                        .font(.caption.weight(.bold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .background(Color.white.opacity(0.11), in: RoundedRectangle(cornerRadius: 8))
+                }
+                .buttonStyle(.plain)
+                .disabled(requestingCoach || Config.coachURL == nil)
+                Text(coachStatus)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -757,6 +782,9 @@ public struct TodayView: View {
         if Config.webhookURL == nil {
             return "Configura Vento para guardar tus metricas. Despues de conectar la banda, el resumen diario podra enviarse cuando haya datos suficientes."
         }
+        if Config.coachURL == nil {
+            return "Configura el Coach IA de Vento en Ajustes para generar recomendaciones reales desde el backend."
+        }
         if workoutActive {
             return "Actividad en curso. Mantén la intensidad si puedes hablar en frases cortas; baja el ritmo si HR sube sin movimiento o te sientes fatigado."
         }
@@ -951,6 +979,47 @@ public struct TodayView: View {
             entries.removeFirst(entries.count - 60)
         }
         moodEntriesRaw = EmotionalJournalCodec.encode(entries)
+    }
+
+    private func requestVentoCoach() {
+        guard Config.coachURL != nil else {
+            coachStatus = "Configura el Coach IA en Ajustes"
+            return
+        }
+        requestingCoach = true
+        coachStatus = "Enviando metricas actuales a Vento"
+        let metrics = VentoCoachMetrics(
+            live_hr: bleManager.liveHeartRate ?? liveHeartRate,
+            hrv_rmssd_ms: bleManager.latestRMSSD,
+            recovery_score: recoveryScore,
+            strain_score: dailyStrain,
+            steps: healthStore.healthStepsToday ?? (stepCounter.steps + bleManager.stepCount),
+            active_calories_kcal: healthStore.activeCaloriesKcal,
+            vo2max: healthStore.vo2Max,
+            sleep_hours: healthStore.healthSleepHours ?? (sleepSummary.sleepHours > 0 ? sleepSummary.sleepHours : nil),
+            awakenings: awakeningsCount,
+            menstrual_cycle_day: healthStore.cycleSummary.currentDay,
+            menstrual_phase: healthStore.cycleSummary.phase,
+            mood_trend: moodTrend,
+            workout_active: workoutActive
+        )
+        Task {
+            do {
+                let response = try await VentoCoachBridge().ask(metrics)
+                await MainActor.run {
+                    coachSummary = response.summary
+                    coachRecommendation = response.recommendation
+                    coachFocus = response.training_focus
+                    coachStatus = response.ok ? "Coach actualizado desde Vento" : "Vento respondio sin confirmacion"
+                    requestingCoach = false
+                }
+            } catch {
+                await MainActor.run {
+                    coachStatus = "No se pudo consultar Vento: \(error.localizedDescription)"
+                    requestingCoach = false
+                }
+            }
+        }
     }
 
     private var vo2Text: String {

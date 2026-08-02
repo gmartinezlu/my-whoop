@@ -3,6 +3,7 @@ import Sync
 
 public struct SettingsView: View {
     @AppStorage(Config.webhookURLDefaultsKey) private var webhookURL: String = ""
+    @AppStorage(Config.coachURLDefaultsKey) private var coachURL: String = ""
 
     public init() {}
 
@@ -26,6 +27,25 @@ public struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            Section("Coach IA de Vento") {
+                LabeledContent("Estado", value: coachStatus)
+                TextField("Coach URL", text: $coachURL)
+                    #if os(iOS)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                    #endif
+                    .autocorrectionDisabled()
+                Button("Usar coach de mywhoop") {
+                    coachURL = Config.defaultVentoCoachURLString
+                }
+                Button("Limpiar coach", role: .destructive) {
+                    coachURL = ""
+                }
+                Text("Este endpoint usa Vento para generar recomendaciones con tus metricas actuales.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .navigationTitle("Ajustes")
     }
@@ -35,5 +55,12 @@ public struct SettingsView: View {
             return "No configurado"
         }
         return URL(string: webhookURL) == nil ? "URL invalida" : "Configurado"
+    }
+
+    private var coachStatus: String {
+        guard !coachURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return "No configurado"
+        }
+        return URL(string: coachURL) == nil ? "URL invalida" : "Configurado"
     }
 }
