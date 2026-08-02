@@ -1,5 +1,45 @@
 # BLE Capture Guide
 
+## WHOOP V5/MG UUID starting point
+
+Use these publicly documented UUID families as the first discovery target. The
+app now detects either family during service discovery and subscribes to the data
+notification characteristic when iOS allows it.
+
+### FD4B family
+
+- Main service: `fd4b0001-cce1-4033-93ce-002d5875f58a`
+- Command characteristic: `fd4b0002-cce1-4033-93ce-002d5875f58a`
+- Additional characteristic: `fd4b0003-cce1-4033-93ce-002d5875f58a`
+- Additional characteristic: `fd4b0004-cce1-4033-93ce-002d5875f58a`
+- Additional characteristic: `fd4b0005-cce1-4033-93ce-002d5875f58a`
+- Data/notification characteristic: `fd4b0007-cce1-4033-93ce-002d5875f58a`
+
+### 6108 family
+
+- Main service: `61080001-0000-0000-0000-000000000000`
+- Command characteristic: `61080002-0000-0000-0000-000000000000`
+- Additional characteristic: `61080003-0000-0000-0000-000000000000`
+- Additional characteristic: `61080004-0000-0000-0000-000000000000`
+- Additional characteristic: `61080005-0000-0000-0000-000000000000`
+- Data/notification characteristic: `61080007-0000-0000-0000-000000000000`
+
+## Raw frame logging
+
+Frames received on the WHOOP data characteristic that do not match the current
+decoder are not discarded. The app writes them to `mywhoop-raw-ble.log` in the
+iPhone Documents directory. Export it from Settings -> Log BLE crudo.
+
+Each line contains:
+
+- ISO-8601 timestamp
+- characteristic UUID
+- decoder reason
+- hex payload
+
+Use that log to refine opcodes, byte order, payload lengths, scaling factors, and
+any handshake/authentication requirement.
+
 This file is the human-maintained source of truth for the WHOOP 5.0 BLE protocol observations you make from your own device and traffic captures. Do not enter guessed values.
 
 Note: this workspace's top-level `docs/` directory is read-only, so this project guide lives at the repository root.

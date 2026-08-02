@@ -20,7 +20,7 @@ let package = Package(
             ],
             path: ".",
             exclude: ["Package.swift", "Tests", "README.md"],
-            sources: ["BLEConnectionState.swift", "BLEManager.swift"]
+            sources: ["BLEConnectionState.swift", "BLEManager.swift", "RawBLELogStore.swift"]
         ),
         .testTarget(
             name: "BLETests",

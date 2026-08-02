@@ -24,6 +24,7 @@ public struct TodayView: View {
     @State private var coachFocus: String?
     @State private var coachStatus = "Listo"
     @State private var requestingCoach = false
+    @State private var wroteCurrentSleepToHealth = false
 
     private let recoveryScore: Int
     private let liveHeartRate: Int?
@@ -53,12 +54,14 @@ public struct TodayView: View {
                     VStack(spacing: 22) {
                         topBar
                         brandMark
+                        sectionLabel("Datos de tu WHOOP")
                         scoreRow
                         coachCard
                         liveHealthCard
                         daySection
                         insightsCard
                         sleepCard
+                        sectionLabel("Seguimiento personal")
                         cycleCard
                         emotionalHealthCard
                         syncCard
@@ -74,7 +77,10 @@ public struct TodayView: View {
                 NavigationLink {
                     SettingsView()
                 } label: {
-                    Image(systemName: "gearshape")
+                    HStack(spacing: 8) {
+                        connectionBadge
+                        Image(systemName: "gearshape")
+                    }
                 }
             }
         }
@@ -281,7 +287,7 @@ public struct TodayView: View {
                         .font(.system(size: 56, weight: .bold, design: .rounded))
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
-                    Text("LPM")
+                    Text(bleManager.liveHeartRate == nil && liveHeartRate == nil ? "" : "LPM")
                         .font(.headline.weight(.bold))
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -365,7 +371,7 @@ public struct TodayView: View {
     }
 
     private var emotionalHealthCard: some View {
-        card {
+        card(accent: .pink) {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
                     Label("Salud emocional", systemImage: "brain.head.profile")
@@ -429,7 +435,7 @@ public struct TodayView: View {
     }
 
     private var cycleCard: some View {
-        card {
+        card(accent: .purple) {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
                     Label("Ciclo menstrual", systemImage: "calendar")
@@ -598,12 +604,35 @@ public struct TodayView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+    private func card<Content: View>(accent: Color? = nil, @ViewBuilder content: () -> Content) -> some View {
         content()
             .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color(red: 0.15, green: 0.18, blue: 0.19).opacity(0.97), in: RoundedRectangle(cornerRadius: 8))
+            .overlay(alignment: .top) {
+                if let accent {
+                    Rectangle()
+                        .fill(accent)
+                        .frame(height: 3)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+            }
+            .overlay {
+                if let accent {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(accent.opacity(0.35), lineWidth: 1)
+                }
+            }
             .foregroundStyle(.white)
+    }
+
+    private func sectionLabel(_ title: String) -> some View {
+        Text(title.uppercased())
+            .font(.caption.weight(.bold))
+            .tracking(1.6)
+            .foregroundStyle(.white.opacity(0.62))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 4)
     }
 
     private func actionPill(icon: String, title: String) -> some View {
@@ -701,7 +730,7 @@ public struct TodayView: View {
     }
 
     private var currentHeartRateText: String {
-        (bleManager.liveHeartRate ?? liveHeartRate).map { "\($0)" } ?? "--"
+        (bleManager.liveHeartRate ?? liveHeartRate).map { "\($0)" } ?? "Esperando HR"
     }
 
     private var hrvText: String {
@@ -709,11 +738,11 @@ public struct TodayView: View {
     }
 
     private var recoveryDisplay: String {
-        recoveryScore > 0 ? "\(recoveryScore)%" : "--%"
+        recoveryScore > 0 ? "\(recoveryScore)%" : "Conecta"
     }
 
     private var strainDisplay: String {
-        dailyStrain > 0 ? String(format: "%.1f", dailyStrain) : "0"
+        dailyStrain > 0 ? String(format: "%.1f", dailyStrain) : "Esperando"
     }
 
     private var strainProgress: Double {
@@ -721,7 +750,7 @@ public struct TodayView: View {
     }
 
     private var bandBatteryText: String {
-        bleManager.batteryPercent.map { "\($0)%" } ?? "--%"
+        bleManager.batteryPercent.map { "\($0)%" } ?? "Banda"
     }
 
     private var batteryIcon: String {
@@ -757,6 +786,29 @@ public struct TodayView: View {
         case .connected: return "LINK"
         case .syncing: return "SYNC"
         case .live: return "LIVE"
+        }
+    }
+
+    private var connectionBadge: some View {
+        HStack(spacing: 5) {
+            Circle()
+                .fill(connectionBadgeColor)
+                .frame(width: 8, height: 8)
+            Text(connectionDisplay)
+                .font(.caption2.weight(.bold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(Color.white.opacity(0.10), in: Capsule())
+    }
+
+    private var connectionBadgeColor: Color {
+        switch bleManager.state {
+        case .live, .connected: return .mint
+        case .connecting, .syncing: return .yellow
+        case .disconnected: return .gray
         }
     }
 
@@ -809,7 +861,7 @@ public struct TodayView: View {
         if recoveryScore > 0 {
             return "Dia moderado. Entrena tecnica, fuerza controlada o cardio suave segun como te sientas."
         }
-        return "Conecta la banda para medir HR/HRV en vivo. Con esos datos puedo darte una recomendacion mas util para hoy."
+        return "Conecta tu banda para medir HR/HRV en vivo. Con esos datos puedo darte una recomendacion mas util para hoy."
     }
 
     private var recoveryColor: Color {
@@ -857,7 +909,7 @@ public struct TodayView: View {
         if healthStore.healthSleepHours != nil {
             return "\(max(0, 100 - awakeningsCount * 6))%"
         }
-        return sleepSummary.sleepHours > 0 ? "\(Int(round(sleepSummary.efficiencyPercent)))%" : "--%"
+        return sleepSummary.sleepHours > 0 ? "\(Int(round(sleepSummary.efficiencyPercent)))%" : "Conecta"
     }
 
     private var sleepProgress: Double {
@@ -872,7 +924,7 @@ public struct TodayView: View {
             let totalMinutes = Int(round(healthSleepHours * 60))
             return "\(totalMinutes / 60):\(String(format: "%02d", totalMinutes % 60))"
         }
-        guard sleepSummary.sleepHours > 0 else { return "--" }
+        guard sleepSummary.sleepHours > 0 else { return "Conecta banda" }
         let totalMinutes = Int(round(sleepSummary.sleepHours * 60))
         return "\(totalMinutes / 60):\(String(format: "%02d", totalMinutes % 60))"
     }
@@ -881,7 +933,7 @@ public struct TodayView: View {
         if healthStore.healthSleepHours != nil {
             return "\(max(0, 100 - awakeningsCount * 6))%"
         }
-        return sleepSummary.sleepHours > 0 ? "\(Int(round(sleepSummary.efficiencyPercent)))%" : "--%"
+        return sleepSummary.sleepHours > 0 ? "\(Int(round(sleepSummary.efficiencyPercent)))%" : "Esperando"
     }
 
     private var awakeningsCount: Int {
@@ -926,6 +978,11 @@ public struct TodayView: View {
             activeWorkoutSamples.append(sample)
             activeWorkoutMovement.append(movement)
         }
+
+        if !wroteCurrentSleepToHealth, sleepSummary.sleepHours >= 1.0 {
+            healthStore.writeSleep(sleepSummary)
+            wroteCurrentSleepToHealth = true
+        }
     }
 
     private func toggleWorkout() {
@@ -952,10 +1009,13 @@ public struct TodayView: View {
         )
         if let session = detected.last {
             completedWorkouts.append(session)
+            healthStore.writeWorkout(session)
         } else if let first = activeWorkoutSamples.first, let last = activeWorkoutSamples.last, activeWorkoutSamples.count >= 2 {
             let averageHR = activeWorkoutSamples.map(\.bpm).reduce(0, +) / Double(activeWorkoutSamples.count)
             let trimp = StrainScorer.trimp(samples: activeWorkoutSamples, restingHR: restingHR, maxHR: maxHR, sex: biologicalSex)
-            completedWorkouts.append(WorkoutSession(start: first.timestamp, end: last.timestamp, averageHR: averageHR, strain: StrainScorer.strainScore(fromTRIMP: trimp)))
+            let session = WorkoutSession(start: first.timestamp, end: last.timestamp, averageHR: averageHR, strain: StrainScorer.strainScore(fromTRIMP: trimp))
+            completedWorkouts.append(session)
+            healthStore.writeWorkout(session)
         }
         activeWorkoutSamples.removeAll()
         activeWorkoutMovement.removeAll()

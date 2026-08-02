@@ -68,6 +68,7 @@ public final class BLEManager: NSObject, ObservableObject {
     @Published public private(set) var latestRMSSD: Double?
     @Published public private(set) var batteryPercent: Int?
     @Published public private(set) var stepCount: Int = 0
+    @Published public private(set) var activeWHOOPFamily: ProtocolConstants.WHOOPFamily?
     @Published public private(set) var lastError: String?
     @Published public private(set) var authenticationNotice: String?
 
@@ -104,6 +105,7 @@ public final class BLEManager: NSObject, ObservableObject {
             self.latestRMSSD = nil
             self.batteryPercent = nil
             self.stepCount = 0
+            self.activeWHOOPFamily = nil
             self.lastError = nil
             self.authenticationNotice = nil
             self.rrWindowMs.removeAll()
@@ -137,6 +139,7 @@ public final class BLEManager: NSObject, ObservableObject {
             self.latestRMSSD = nil
             self.batteryPercent = nil
             self.stepCount = 0
+            self.activeWHOOPFamily = nil
             self.lastError = nil
             self.authenticationNotice = nil
             self.rrWindowMs.removeAll()
@@ -197,6 +200,9 @@ public final class BLEManager: NSObject, ObservableObject {
 
     private func subscribeToKnownCharacteristics(on peripheral: CBPeripheral) {
         for service in peripheral.services ?? [] {
+            if let family = ProtocolConstants.family(for: service.uuid) {
+                activeWHOOPFamily = family
+            }
             for characteristic in service.characteristics ?? [] where shouldSubscribe(to: characteristic) {
                 if shouldSkipEncryptedUnknownCharacteristic(characteristic) {
                     authenticationNotice = "La banda protege \(characteristic.uuid.uuidString). iOS no permite leer esa notificación sin autenticación/pairing compatible."
@@ -249,14 +255,16 @@ public final class BLEManager: NSObject, ObservableObject {
             return ProtocolConstants.notifyCharacteristicUUIDs.contains(characteristic.uuid)
         }
         return normalizedUUID(characteristic.uuid.uuidString) == "2A37"
+            || ProtocolConstants.isWhoopDataCharacteristic(characteristic.uuid.uuidString)
     }
 
     private func shouldSkipEncryptedUnknownCharacteristic(_ characteristic: CBCharacteristic) -> Bool {
         let requiresEncryption = characteristic.properties.contains(.notifyEncryptionRequired)
             || characteristic.properties.contains(.indicateEncryptionRequired)
         let isStandardHeartRate = normalizedUUID(characteristic.uuid.uuidString) == "2A37"
+        let isWHOOPData = ProtocolConstants.isWhoopDataCharacteristic(characteristic.uuid.uuidString)
         let isExplicitlyConfigured = ProtocolConstants.notifyCharacteristicUUIDs.contains(characteristic.uuid)
-        return requiresEncryption && !isStandardHeartRate && !isExplicitlyConfigured
+        return requiresEncryption && !isStandardHeartRate && !isWHOOPData && !isExplicitlyConfigured
     }
 
     private func hexString(_ data: Data) -> String {
@@ -338,8 +346,7 @@ extension BLEManager: CBCentralManagerDelegate {
 
     public func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         state = .connected
-        let serviceFilter = ProtocolConstants.serviceUUIDs.isEmpty ? nil : ProtocolConstants.serviceUUIDs
-        peripheral.discoverServices(serviceFilter)
+        peripheral.discoverServices(nil)
         finishOperation()
     }
 
@@ -366,8 +373,10 @@ extension BLEManager: CBPeripheralDelegate {
         }
 
         for service in peripheral.services ?? [] {
-            let characteristicFilter = ProtocolConstants.characteristicUUIDs.isEmpty ? nil : ProtocolConstants.characteristicUUIDs
-            peripheral.discoverCharacteristics(characteristicFilter, for: service)
+            if let family = ProtocolConstants.family(for: service.uuid) {
+                activeWHOOPFamily = family
+            }
+            peripheral.discoverCharacteristics(nil, for: service)
         }
         refreshGATTSnapshot(for: peripheral)
     }
@@ -417,9 +426,23 @@ extension BLEManager: CBPeripheralDelegate {
             let records = try decoder.decode(data, characteristic: characteristic.uuid.uuidString)
             latestRecords.append(contentsOf: records)
             applyDecodedRecords(records)
-        } catch BLEProtocolDecoderError.unsupportedUntilCaptureIsDocumented {
-            return
         } catch {
+            RawBLELogStore.append(
+                characteristicUUID: characteristic.uuid.uuidString,
+                payloadHex: hexString(data),
+                reason: String(describing: error)
+            )
+            if case BLEProtocolDecoderError.unsupportedCharacteristic = error {
+                return
+            }
+            if case BLEProtocolDecoderError.unrecognizedWHOOPFrame = error {
+                authenticationNotice = "Frame WHOOP no reconocido. Quedo guardado en el log BLE crudo para ajustar el decoder."
+                return
+            }
+            if case BLEProtocolDecoderError.malformedWHOOPFrame = error {
+                authenticationNotice = "Frame WHOOP mal formado o incompleto. Quedo guardado en el log BLE crudo."
+                return
+            }
             lastError = error.localizedDescription
         }
     }

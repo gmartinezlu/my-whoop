@@ -1,4 +1,5 @@
 import Combine
+import Compute
 import Foundation
 
 #if os(iOS) && canImport(HealthKit)
@@ -54,8 +55,13 @@ public final class HealthMetricsStore: ObservableObject {
             HKObjectType.categoryType(forIdentifier: .menstrualFlow),
             HKObjectType.workoutType()
         ].compactMap { $0 })
+        let shareTypes = Set([
+            HKObjectType.categoryType(forIdentifier: .sleepAnalysis),
+            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned),
+            HKObjectType.workoutType()
+        ].compactMap { $0 })
 
-        store.requestAuthorization(toShare: [], read: readTypes) { [weak self] success, error in
+        store.requestAuthorization(toShare: shareTypes, read: readTypes) { [weak self] success, error in
             DispatchQueue.main.async {
                 if let error {
                     self?.status = error.localizedDescription
@@ -88,6 +94,60 @@ public final class HealthMetricsStore: ObservableObject {
         queryStrengthWorkouts()
         querySleep()
         queryCycle()
+        #endif
+    }
+
+    public func writeWorkout(_ session: WorkoutSession) {
+        #if os(iOS) && canImport(HealthKit)
+        let duration = session.end.timeIntervalSince(session.start)
+        let energy = max(session.strain, 0) * max(duration / 60.0, 1) * 2.0
+        let workout = HKWorkout(
+            activityType: .other,
+            start: session.start,
+            end: session.end,
+            duration: duration,
+            totalEnergyBurned: HKQuantity(unit: .kilocalorie(), doubleValue: energy),
+            totalDistance: nil,
+            metadata: [
+                "MyWhoopStrain": session.strain,
+                "MyWhoopAverageHeartRate": session.averageHR
+            ]
+        )
+        store.save(workout) { [weak self] success, error in
+            DispatchQueue.main.async {
+                if let error {
+                    self?.status = "Health write: \(error.localizedDescription)"
+                } else if success {
+                    self?.status = "Apple Health activo"
+                }
+            }
+        }
+        #endif
+    }
+
+    public func writeSleep(_ summary: SleepSummary, date: Date = Date()) {
+        #if os(iOS) && canImport(HealthKit)
+        guard let type = HKObjectType.categoryType(forIdentifier: .sleepAnalysis), summary.sleepHours > 0 else { return }
+        let end = date
+        let start = end.addingTimeInterval(-summary.sleepHours * 3600.0)
+        let sample = HKCategorySample(
+            type: type,
+            value: HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue,
+            start: start,
+            end: end,
+            metadata: [
+                "MyWhoopSleepEfficiencyPercent": summary.efficiencyPercent
+            ]
+        )
+        store.save(sample) { [weak self] success, error in
+            DispatchQueue.main.async {
+                if let error {
+                    self?.status = "Health write: \(error.localizedDescription)"
+                } else if success {
+                    self?.status = "Apple Health activo"
+                }
+            }
+        }
         #endif
     }
 }

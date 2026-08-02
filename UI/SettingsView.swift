@@ -1,3 +1,4 @@
+import BLE
 import SwiftUI
 import Sync
 
@@ -43,6 +44,19 @@ public struct SettingsView: View {
                     coachURL = ""
                 }
                 Text("Este endpoint usa Vento para generar recomendaciones con tus metricas actuales.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("Log BLE crudo") {
+                LabeledContent("Archivo", value: RawBLELogStore.fileName)
+                ShareLink(item: RawBLELogStore.fileURL) {
+                    Label("Exportar log BLE crudo", systemImage: "square.and.arrow.up")
+                }
+                Button("Limpiar log BLE", role: .destructive) {
+                    RawBLELogStore.clear()
+                }
+                Text("Los frames WHOOP que no calzan con el decoder quedan guardados aqui como hex dump para ajustar el protocolo con datos reales de tu banda.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

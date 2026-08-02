@@ -29,9 +29,34 @@ final class BLEProtocolDecoderTests: XCTestCase {
         XCTAssertEqual(secondRR.milliseconds, 1250, accuracy: 0.001)
     }
 
-    func testPrivateDecoderRemainsExplicitStubUntilCaptureIsDocumented() {
+    func testUnsupportedCharacteristicIsExplicit() {
         XCTAssertThrowsError(try BLEProtocolDecoder().decode(Data([0x00]), characteristic: "placeholder")) { error in
-            XCTAssertEqual(error as? BLEProtocolDecoderError, .unsupportedUntilCaptureIsDocumented)
+            XCTAssertEqual(error as? BLEProtocolDecoderError, .unsupportedCharacteristic("placeholder"))
+        }
+    }
+
+    func testDecodesWHOOPDataCharacteristicHeartRateTLV() throws {
+        let records = try BLEProtocolDecoder().decode(
+            Data([ProtocolConstants.Opcode.heartRate, 0x01, 72]),
+            characteristic: ProtocolConstants.WHOOPV5.data.uuidString
+        )
+        XCTAssertEqual(records.count, 1)
+        guard case .heartRate(let heartRate) = records[0] else {
+            XCTFail("Expected heart rate record")
+            return
+        }
+        XCTAssertEqual(heartRate.bpm, 72)
+    }
+
+    func testUnrecognizedWHOOPFrameIsExplicit() {
+        XCTAssertThrowsError(try BLEProtocolDecoder().decode(
+            Data([0xFF, 0xAA, 0xBB]),
+            characteristic: ProtocolConstants.WHOOP6108.data.uuidString
+        )) { error in
+            guard case .unrecognizedWHOOPFrame = error as? BLEProtocolDecoderError else {
+                XCTFail("Expected unrecognized WHOOP frame")
+                return
+            }
         }
     }
 }
