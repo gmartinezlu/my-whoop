@@ -338,12 +338,29 @@ public struct TodayView: View {
 
     private var syncCard: some View {
         card {
-            VStack(alignment: .leading, spacing: 12) {
-                Label("Vento Sync", systemImage: "arrow.triangle.2.circlepath")
-                    .font(.headline.weight(.bold))
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    Label("Webhook de Vento", systemImage: "paperplane.circle")
+                        .font(.headline.weight(.bold))
+                    Spacer()
+                    Text(Config.webhookURL == nil ? "OFF" : "ON")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Config.webhookURL == nil ? .orange : .mint)
+                }
                 metricRow(title: "Ultimo envio", value: syncStatusText)
                 metricRow(title: "Pendientes", value: "\(pendingOutboxCount)")
-                metricRow(title: "Webhook", value: Config.webhookURL == nil ? "No configurado" : "Configurado")
+                metricRow(title: "Destino", value: webhookDestinationText)
+
+                NavigationLink {
+                    SettingsView()
+                } label: {
+                    Label(Config.webhookURL == nil ? "CONFIGURAR WEBHOOK" : "EDITAR WEBHOOK", systemImage: "link")
+                        .font(.caption.weight(.bold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .background(Color.white.opacity(0.11), in: RoundedRectangle(cornerRadius: 8))
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -604,6 +621,13 @@ public struct TodayView: View {
             return "Pendiente de primera medicion"
         }
         return lastSyncDescription
+    }
+
+    private var webhookDestinationText: String {
+        guard let host = Config.webhookURL?.host else {
+            return "Sin URL"
+        }
+        return host
     }
 
     private var coachMessage: String {

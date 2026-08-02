@@ -1,9 +1,17 @@
 import XCTest
+import Sync
 @testable import WhoopUI
 
 final class WhoopUITests: XCTestCase {
     func testSettingsViewCanInitialize() {
         _ = SettingsView()
+    }
+
+    func testDefaultVentoWebhookURLIsValidHTTPS() {
+        let url = URL(string: Config.defaultVentoWebhookURLString)
+        XCTAssertEqual(url?.scheme, "https")
+        XCTAssertEqual(url?.host, "cloud.vento.build")
+        XCTAssertTrue(Config.defaultVentoWebhookURLString.contains("whoop_webhook"))
     }
 
     func testMoodEntriesRoundTripAndTrend() {

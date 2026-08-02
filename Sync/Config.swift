@@ -2,6 +2,7 @@ import Foundation
 
 public enum Config {
     public static let webhookURLDefaultsKey = "ventoWebhookURL"
+    public static let defaultVentoWebhookURLString = "https://cloud.vento.build/api/core/v1/networks/mywhoop/boards/whoop_webhook/cards/ingest/run/raw?token=8360e0f8f85c12d370458e78eba982963c60223a2b9b98b7"
 
     public static var webhookURL: URL? {
         get {
