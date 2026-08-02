@@ -24,6 +24,10 @@
 	<true/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>This personal app connects to your own WHOOP band over Bluetooth.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>This personal app reads your Apple Health data for steps, sleep, VO2 max, calories, workouts, and menstrual cycle insights.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>This personal app does not write health data in this version.</string>
 	<key>NSMotionUsageDescription</key>
 	<string>This personal app counts your iPhone steps for the daily activity view.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>

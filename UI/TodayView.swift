@@ -7,6 +7,7 @@ import Sync
 public struct TodayView: View {
     @ObservedObject private var bleManager: BLEManager
     @StateObject private var stepCounter = DeviceStepCounter()
+    @StateObject private var healthStore = HealthMetricsStore()
     @AppStorage("mywhoop.moodEntries") private var moodEntriesRaw: String = "[]"
     @State private var workoutActive = false
     @State private var activeWorkoutSamples: [HeartRateSample] = []
@@ -17,6 +18,7 @@ public struct TodayView: View {
     @State private var lastSampledStepCount = 0
     @State private var previousConnectionState: BLEConnectionState = .disconnected
     @State private var selectedMoodScore = 3
+    @State private var ecgPoints: [Double] = Array(repeating: 0.50, count: 72)
 
     private let recoveryScore: Int
     private let liveHeartRate: Int?
@@ -48,8 +50,11 @@ public struct TodayView: View {
                         brandMark
                         scoreRow
                         coachCard
+                        liveHealthCard
                         daySection
+                        insightsCard
                         sleepCard
+                        cycleCard
                         emotionalHealthCard
                         syncCard
                         bleDiscoveryCard
@@ -72,6 +77,7 @@ public struct TodayView: View {
         .onAppear {
             ConnectionAlertManager.requestPermission()
             stepCounter.start()
+            healthStore.start()
             previousConnectionState = bleManager.state
         }
         .onReceive(sampleTimer) { _ in
@@ -212,8 +218,8 @@ public struct TodayView: View {
                         actionButton(icon: workoutActive ? "stop.circle" : "stopwatch", title: workoutActive ? "FINALIZAR" : "INICIAR", action: toggleWorkout)
                     }
 
-                    HStack(spacing: 18) {
-                        metricBlock(title: "PASOS", value: stepsText, footnote: stepCounter.status)
+                HStack(spacing: 18) {
+                        metricBlock(title: "PASOS", value: stepsText, footnote: stepsFootnote)
                         metricBlock(title: "HR EN VIVO", value: currentHeartRateText, footnote: workoutStatusText)
                     }
 
@@ -229,6 +235,67 @@ public struct TodayView: View {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    private var liveHealthCard: some View {
+        card {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .firstTextBaseline) {
+                    Label("Salud en vivo", systemImage: "waveform.path.ecg")
+                        .font(.headline.weight(.bold))
+                    Spacer()
+                    Text(connectionDisplay)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(bleManager.state == .live ? .mint : .orange)
+                }
+
+                HStack(alignment: .lastTextBaseline, spacing: 8) {
+                    Text(currentHeartRateText)
+                        .font(.system(size: 56, weight: .bold, design: .rounded))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    Text("LPM")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text(hrvText)
+                            .font(.subheadline.weight(.bold))
+                        Text(batteryFootnote)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                ECGWaveform(points: ecgPoints)
+                    .stroke(Color.mint, style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                    .frame(height: 76)
+                    .background(Color.black.opacity(0.20), in: RoundedRectangle(cornerRadius: 8))
+
+                noticeRow(icon: "heart.fill", text: "La linea ECG es una visualizacion de pulso calculada desde HR/RR BLE; no es un electrocardiograma medico de una derivacion.", color: Color.secondary)
+            }
+        }
+    }
+
+    private var insightsCard: some View {
+        card {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Text("Mi panel de control")
+                        .font(.title2.weight(.bold))
+                    Spacer()
+                    Text(healthStore.status.uppercased())
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(healthStore.status.contains("activo") ? .mint : .orange)
+                }
+
+                dashboardRow(icon: "waveform.path.ecg", title: "Variabilidad de la frecuencia cardiaca", value: hrvText)
+                dashboardRow(icon: "figure.walk", title: "Pasos", value: stepsText)
+                dashboardRow(icon: "lungs", title: "VO2 max", value: vo2Text)
+                dashboardRow(icon: "flame", title: "Calorias activas", value: caloriesText)
+                dashboardRow(icon: "dumbbell", title: "Tiempo de actividad de fuerza", value: strengthText)
             }
         }
     }
@@ -332,6 +399,33 @@ public struct TodayView: View {
                     }
                     .frame(height: 96, alignment: .bottom)
                 }
+            }
+        }
+    }
+
+    private var cycleCard: some View {
+        card {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Label("Ciclo menstrual", systemImage: "calendar")
+                        .font(.headline.weight(.bold))
+                    Spacer()
+                    Text(healthStore.cycleSummary.status.uppercased())
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(healthStore.cycleSummary.currentDay == nil ? .orange : .mint)
+                }
+
+                HStack(alignment: .top, spacing: 18) {
+                    metricBlock(title: "DIA DEL CICLO", value: cycleDayText, footnote: healthStore.cycleSummary.phase)
+                    metricBlock(title: "PROXIMO PERIODO", value: nextPeriodText, footnote: daysUntilPeriodText)
+                }
+
+                cyclePhaseStrip
+
+                Text(healthStore.cycleSummary.detail)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -538,6 +632,31 @@ public struct TodayView: View {
         .font(.subheadline)
     }
 
+    private func dashboardRow(icon: String, title: String, value: String) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 26)
+            Text(title.uppercased())
+                .font(.caption.weight(.bold))
+                .tracking(1.2)
+                .lineLimit(2)
+                .minimumScaleFactor(0.75)
+            Spacer(minLength: 12)
+            Text(value)
+                .font(.subheadline.weight(.bold))
+                .multilineTextAlignment(.trailing)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Image(systemName: "chevron.right")
+                .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 14)
+        .padding(.horizontal, 14)
+        .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 8))
+    }
+
     private func noticeRow(icon: String, text: String, color: Color) -> some View {
         Label(text, systemImage: icon)
             .font(.caption)
@@ -598,8 +717,12 @@ public struct TodayView: View {
     }
 
     private var stepsText: String {
-        let steps = stepCounter.steps + bleManager.stepCount
+        let steps = healthStore.healthStepsToday ?? (stepCounter.steps + bleManager.stepCount)
         return steps > 0 ? steps.formatted() : "--"
+    }
+
+    private var stepsFootnote: String {
+        healthStore.healthStepsToday == nil ? stepCounter.status : "Apple Health"
     }
 
     private var connectionDisplay: String {
@@ -645,6 +768,9 @@ public struct TodayView: View {
         }
         if let rmssd = bleManager.latestRMSSD, rmssd < 25 {
             return "HRV bajo ahora mismo. Prioriza movilidad, zona 2 suave o descanso activo hasta tener mas datos del dia."
+        }
+        if let cycleDay = healthStore.cycleSummary.currentDay, healthStore.cycleSummary.phase == "Lutea" || cycleDay <= 2 {
+            return "Tu ciclo sugiere ajustar carga segun energia y sintomas. Haz fuerza controlada o cardio suave si HRV/sueno no acompañan."
         }
         if let heartRate = bleManager.liveHeartRate, heartRate > 110 {
             return "Tu frecuencia esta elevada. Si estas entrenando, mantén el bloque; si estas en reposo, espera a recuperar antes de alta intensidad."
@@ -700,24 +826,40 @@ public struct TodayView: View {
     }
 
     private var sleepRingText: String {
+        if healthStore.healthSleepHours != nil {
+            return "\(max(0, 100 - awakeningsCount * 6))%"
+        }
         sleepSummary.sleepHours > 0 ? "\(Int(round(sleepSummary.efficiencyPercent)))%" : "--%"
     }
 
     private var sleepProgress: Double {
+        if healthStore.healthSleepHours != nil {
+            return Double(max(0, 100 - awakeningsCount * 6)) / 100.0
+        }
         min(max(sleepSummary.efficiencyPercent / 100, 0), 1)
     }
 
     private var sleepDurationText: String {
+        if let healthSleepHours = healthStore.healthSleepHours, healthSleepHours > 0 {
+            let totalMinutes = Int(round(healthSleepHours * 60))
+            return "\(totalMinutes / 60):\(String(format: "%02d", totalMinutes % 60))"
+        }
         guard sleepSummary.sleepHours > 0 else { return "--" }
         let totalMinutes = Int(round(sleepSummary.sleepHours * 60))
         return "\(totalMinutes / 60):\(String(format: "%02d", totalMinutes % 60))"
     }
 
     private var sleepEfficiencyText: String {
+        if healthStore.healthSleepHours != nil {
+            return "\(max(0, 100 - awakeningsCount * 6))%"
+        }
         sleepSummary.sleepHours > 0 ? "\(Int(round(sleepSummary.efficiencyPercent)))%" : "--%"
     }
 
     private var awakeningsCount: Int {
+        if let healthAwakenings = healthStore.healthSleepAwakenings {
+            return healthAwakenings
+        }
         let epochs = sleepSummary.epochs
         guard epochs.count > 1 else { return 0 }
         return zip(epochs, epochs.dropFirst()).filter { $0.stage != .awake && $1.stage == .awake }.count
@@ -742,6 +884,7 @@ public struct TodayView: View {
         let movement = min(Double(stepDelta) / 12.0, 1.0)
 
         guard let heartRate = bleManager.liveHeartRate else { return }
+        updateECGPoints(heartRate: heartRate)
         let sample = HeartRateSample(timestamp: Date(), bpm: Double(heartRate))
         dailyHeartRateSamples.append(sample)
         dailyMovementSamples.append(movement)
@@ -810,6 +953,73 @@ public struct TodayView: View {
         moodEntriesRaw = EmotionalJournalCodec.encode(entries)
     }
 
+    private var vo2Text: String {
+        healthStore.vo2Max.map { String(format: "%.1f", $0) } ?? "--"
+    }
+
+    private var caloriesText: String {
+        if let activeCalories = healthStore.activeCaloriesKcal {
+            return "\(Int(round(activeCalories))) kcal"
+        }
+        let fallback = Double(healthStore.healthStepsToday ?? stepCounter.steps) * 0.04
+        return fallback > 0 ? "\(Int(round(fallback))) kcal*" : "--"
+    }
+
+    private var strengthText: String {
+        healthStore.strengthMinutes.map { "\(Int(round($0))) min" } ?? "--"
+    }
+
+    private var cycleDayText: String {
+        healthStore.cycleSummary.currentDay.map { "\($0)" } ?? "--"
+    }
+
+    private var nextPeriodText: String {
+        guard let next = healthStore.cycleSummary.nextPeriod else { return "--" }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d MMM"
+        return formatter.string(from: next)
+    }
+
+    private var daysUntilPeriodText: String {
+        guard let days = healthStore.cycleSummary.daysUntilNextPeriod else {
+            return "Apple Health"
+        }
+        if days == 0 { return "posible inicio hoy" }
+        return "\(days) dias"
+    }
+
+    private var cyclePhaseStrip: some View {
+        HStack(spacing: 5) {
+            phaseSegment("Menstrual", color: .red, active: healthStore.cycleSummary.phase == "Menstrual")
+            phaseSegment("Folicular", color: .purple, active: healthStore.cycleSummary.phase == "Folicular")
+            phaseSegment("Ovulatoria", color: .cyan, active: healthStore.cycleSummary.phase == "Ovulatoria")
+            phaseSegment("Lutea", color: .pink, active: healthStore.cycleSummary.phase == "Lutea")
+        }
+    }
+
+    private func phaseSegment(_ title: String, color: Color, active: Bool) -> some View {
+        VStack(spacing: 6) {
+            RoundedRectangle(cornerRadius: 4)
+                .fill(color.opacity(active ? 0.95 : 0.35))
+                .frame(height: active ? 14 : 8)
+            Text(title)
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(active ? .white : .secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func updateECGPoints(heartRate: Int) {
+        let normalized = min(max((Double(heartRate) - 45.0) / 120.0, 0), 1)
+        let next: [Double] = [0.50, 0.48, 0.55 + normalized * 0.08, 0.18, 0.88, 0.42, 0.50, 0.53, 0.50]
+        ecgPoints.append(contentsOf: next)
+        if ecgPoints.count > 72 {
+            ecgPoints.removeFirst(ecgPoints.count - 72)
+        }
+    }
+
     private func moodLabel(_ score: Int) -> String {
         switch score {
         case 1: return "Bajo"
@@ -845,5 +1055,25 @@ public struct TodayView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm"
         return formatter
+    }
+}
+
+private struct ECGWaveform: Shape {
+    let points: [Double]
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        guard points.count > 1 else { return path }
+        let step = rect.width / CGFloat(points.count - 1)
+        for index in points.indices {
+            let x = CGFloat(index) * step
+            let y = rect.height * CGFloat(1 - min(max(points[index], 0), 1))
+            if index == points.startIndex {
+                path.move(to: CGPoint(x: x, y: y))
+            } else {
+                path.addLine(to: CGPoint(x: x, y: y))
+            }
+        }
+        return path
     }
 }

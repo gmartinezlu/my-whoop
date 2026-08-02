@@ -18,7 +18,7 @@ let package = Package(
             dependencies: ["BLE", "Compute", "Sync"],
             path: ".",
             exclude: ["Package.swift", "Tests", "README.md"],
-            sources: ["TodayView.swift", "SettingsView.swift", "DeviceStepCounter.swift", "ConnectionAlertManager.swift", "EmotionalJournal.swift"]
+            sources: ["TodayView.swift", "SettingsView.swift", "DeviceStepCounter.swift", "ConnectionAlertManager.swift", "EmotionalJournal.swift", "HealthMetricsStore.swift"]
         ),
         .testTarget(
             name: "WhoopUITests",
