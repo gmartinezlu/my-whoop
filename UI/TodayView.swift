@@ -829,14 +829,14 @@ public struct TodayView: View {
         if healthStore.healthSleepHours != nil {
             return "\(max(0, 100 - awakeningsCount * 6))%"
         }
-        sleepSummary.sleepHours > 0 ? "\(Int(round(sleepSummary.efficiencyPercent)))%" : "--%"
+        return sleepSummary.sleepHours > 0 ? "\(Int(round(sleepSummary.efficiencyPercent)))%" : "--%"
     }
 
     private var sleepProgress: Double {
         if healthStore.healthSleepHours != nil {
             return Double(max(0, 100 - awakeningsCount * 6)) / 100.0
         }
-        min(max(sleepSummary.efficiencyPercent / 100, 0), 1)
+        return min(max(sleepSummary.efficiencyPercent / 100, 0), 1)
     }
 
     private var sleepDurationText: String {
@@ -853,7 +853,7 @@ public struct TodayView: View {
         if healthStore.healthSleepHours != nil {
             return "\(max(0, 100 - awakeningsCount * 6))%"
         }
-        sleepSummary.sleepHours > 0 ? "\(Int(round(sleepSummary.efficiencyPercent)))%" : "--%"
+        return sleepSummary.sleepHours > 0 ? "\(Int(round(sleepSummary.efficiencyPercent)))%" : "--%"
     }
 
     private var awakeningsCount: Int {
